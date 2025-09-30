@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import Button from "../../components/corporate-loan/Button";
-import Layout from "../../components/corporate-loan/Layout";
+import Button from "../../components/common/Button";
+import Layout from "../../components/common/Layout";
 import DashboardStats from "../../components/dashboard/DashboardStats";
 import RecentAnalysisList from "../../components/dashboard/RecentAnalysisList";
 
