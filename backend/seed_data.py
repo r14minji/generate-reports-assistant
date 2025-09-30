@@ -51,6 +51,20 @@ try:
             upload_date=datetime.utcnow() - timedelta(hours=1),
             status="completed"
         ),
+        Document(
+            filename="세금계산서_2024Q3.pdf",
+            filepath="uploads/20240930_세금계산서_2024Q3.pdf",
+            file_size=350000,
+            upload_date=datetime.utcnow(),  # 오늘 업로드
+            status="completed"
+        ),
+        Document(
+            filename="계약서_신규사업.pdf",
+            filepath="uploads/20240930_계약서_신규사업.pdf",
+            file_size=450000,
+            upload_date=datetime.utcnow() - timedelta(minutes=30),  # 오늘 업로드
+            status="completed"
+        ),
     ]
 
     for doc in documents:
@@ -105,6 +119,27 @@ try:
             result="양호",
             score=87.5,
             created_at=datetime.utcnow() - timedelta(minutes=20),
+        ),
+        Analysis(
+            document_id=documents[5].id,
+            analysis_type="재무분석",
+            result="우수",
+            score=93.8,
+            created_at=datetime.utcnow(),  # 오늘 분석
+        ),
+        Analysis(
+            document_id=documents[6].id,
+            analysis_type="사업성평가",
+            result="양호",
+            score=86.2,
+            created_at=datetime.utcnow() - timedelta(minutes=15),  # 오늘 분석
+        ),
+        Analysis(
+            document_id=documents[6].id,
+            analysis_type="리스크분석",
+            result="낮음",
+            score=91.0,
+            created_at=datetime.utcnow() - timedelta(minutes=10),  # 오늘 분석
         ),
     ]
 
