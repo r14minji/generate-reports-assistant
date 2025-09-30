@@ -21,7 +21,10 @@ export default function Upload() {
   };
 
   const handleStartAnalysis = () => {
-    navigate("/corporate-loan/extraction");
+    // 업로드된 파일의 document_id를 URL 파라미터로 전달
+    if (uploadedFile?.id) {
+      navigate(`/corporate-loan/extraction?documentId=${uploadedFile.id}`);
+    }
   };
 
   const handleBack = () => {
