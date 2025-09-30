@@ -1,0 +1,50 @@
+export default {
+  welcome: "안녕하세요!",
+  description: "이것은 i18n 설정 예제입니다.",
+  nav: {
+    home: "홈",
+    data: "데이터",
+    about: "소개",
+    counter: "Redux",
+    apiDemo: "TanStack Query",
+    info: "i18next",
+  },
+  home: {
+    title: "React Boilerplate with Vite",
+    techStack: "기술 스택",
+    tech1: "Vite - 빠른 개발 환경과 빌드 도구",
+    tech2: "React 19 - 최신 React 버전",
+    tech3: "TailwindCSS 4 - CSS 프레임워크",
+    tech4: "TypeScript - 정적 타입 지원",
+    tech5: "ESLint - 코드 품질 관리",
+    tech6: "React-i18next - 다국어 지원",
+    tech7: "TanStack Query - 효율적인 데이터 관리",
+    tech8: "Redux Toolkit - 전역 상태 관리",
+  },
+  data: {
+    title: "게시물 목록",
+    loading: "로딩 중...",
+    error: "에러 발생",
+    apiTitle: "API 정보",
+    apiDescription:
+      "이 애플리케이션은 DummyJSON API를 사용하여 데이터를 가져옵니다.",
+    apiDetailsTitle: "API 상세 정보:",
+    apiBaseUrl: "기본 URL: https://dummyjson.com",
+    apiResponseFormat: "응답 형식: JSON",
+    apiAuth: "인증 방식: 인증 불필요",
+    apiTimeout: "요청 타임아웃: 30초",
+    apiNote:
+      "* 이 API는 테스트 및 개발 목적으로 사용되는 더미 데이터를 제공합니다.",
+  },
+  about: {
+    title: "소개",
+    description:
+      "이 페이지는 소개 페이지입니다. Tailwind CSS를 사용하여 스타일링되었습니다.",
+    reduxTest: "Redux 카운터 테스트",
+    count: "카운트",
+    decrease: "감소",
+    increase: "증가",
+    increaseBy: "5 증가",
+    backToHome: "홈으로 돌아가기",
+  },
+};

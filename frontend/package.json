@@ -1,0 +1,53 @@
+{
+  "name": "react-boilerplate",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.6.1",
+    "@tailwindcss/vite": "^4.0.14",
+    "@tanstack/react-query": "^5.68.0",
+    "@types/i18next": "^13.0.0",
+    "@types/node": "^22.13.10",
+    "axios": "^1.8.3",
+    "i18next": "^24.2.3",
+    "i18next-browser-languagedetector": "^8.0.4",
+    "i18next-react": "^0.2.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.4.1",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "postcss": "^8.5.3",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.0.14",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0",
+    "vite-plugin-pages": "^0.33.1"
+  },
+  "main": "index.js",
+  "repository": "git@10.150.255.10:axp/plugnet/archive/boilerplate/react.git",
+  "author": "mjkang <mjKang@cognet9.com>",
+  "license": "MIT"
+}

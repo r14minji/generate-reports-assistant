@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard Light.woff") format("woff");
+  font-weight: 300;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard Regular.woff") format("woff");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard Medium.woff") format("woff");
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard Bold.woff") format("woff");
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "SpaceMono";
+  src: url("./assets/fonts/SpaceMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "SpaceMono";
+  src: url("./assets/fonts/SpaceMono-Bold.ttf") format("truetype");
+  font-weight: 700;
+}
+
+* {
+  font-family: Pretendard, sans-serif;
+}
