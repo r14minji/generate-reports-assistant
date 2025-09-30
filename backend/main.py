@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
 from app.api import dashboard, documents
 
@@ -6,6 +7,15 @@ from app.api import dashboard, documents
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Corporate Loan API", version="1.0.0")
+
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # 프론트엔드 URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 라우터 등록
 app.include_router(dashboard.router)
