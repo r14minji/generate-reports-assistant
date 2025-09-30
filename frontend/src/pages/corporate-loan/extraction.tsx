@@ -15,7 +15,7 @@ export default function Extraction() {
   };
 
   const handleNext = () => {
-    navigate("/corporate-loan/analysis");
+    navigate(`/corporate-loan/additional-info?documentId=${documentId}`);
   };
 
   return (

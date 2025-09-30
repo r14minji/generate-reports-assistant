@@ -27,4 +27,19 @@ export interface IndustryOption {
   name: string;
 }
 
-export type ScreenType = 'dashboard' | 'upload' | 'extraction' | 'analysis' | 'report' | 'final';
+export interface SuggestedField {
+  id: string;
+  label: string;
+  description: string;
+  type: 'text' | 'number' | 'textarea' | 'date';
+  required: boolean;
+  placeholder?: string;
+}
+
+export interface AdditionalInfoData {
+  industry: string;
+  suggestedFields: SuggestedField[];
+  aiReason: string;
+}
+
+export type ScreenType = 'dashboard' | 'upload' | 'extraction' | 'additional-info' | 'analysis' | 'report' | 'final';
