@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://jsonplaceholder.typicode.com";
+const API_BASE_URL = "http://localhost:8000";
 
 // 예시: Axios 인스턴스 생성 및 설정
 export const axiosInstance = axios.create({
@@ -68,8 +68,8 @@ export const httpClient = {
     return axiosInstance.get<T, T>(endpoint);
   },
 
-  post: async <T, D = unknown>(endpoint: string, data: D): Promise<T> => {
-    return axiosInstance.post<T, T>(endpoint, data);
+  post: async <T, D = unknown>(endpoint: string, data: D, config?: any): Promise<T> => {
+    return axiosInstance.post<T, T>(endpoint, data, config);
   },
 
   put: async <T, D = unknown>(endpoint: string, data: D): Promise<T> => {
