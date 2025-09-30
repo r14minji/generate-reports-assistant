@@ -5,7 +5,7 @@ import random
 
 from app.core.database import get_db
 from app.models.document import Document, DocumentExtraction
-from app.schemas.extraction import ExtractionDataResponse
+from app.schemas.extraction import ExtractionDataResponse, ExtractionDataUpdate
 
 router = APIRouter(prefix="/api/extraction", tags=["extraction"])
 
@@ -61,6 +61,34 @@ def get_extraction_data(document_id: int, db: Session = Depends(get_db)):
     db.refresh(mock_extraction)
 
     return mock_extraction
+
+@router.put("/{document_id}", response_model=ExtractionDataResponse)
+def update_extraction_data(
+    document_id: int,
+    update_data: ExtractionDataUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    추출된 데이터를 수정합니다.
+    """
+
+    # 추출 데이터 조회
+    extraction = db.query(DocumentExtraction).filter(
+        DocumentExtraction.document_id == document_id
+    ).first()
+
+    if not extraction:
+        raise HTTPException(status_code=404, detail="추출 데이터를 찾을 수 없습니다.")
+
+    # 업데이트할 필드만 변경
+    update_dict = update_data.model_dump(exclude_unset=True)
+    for field, value in update_dict.items():
+        setattr(extraction, field, value)
+
+    db.commit()
+    db.refresh(extraction)
+
+    return extraction
 
 @router.post("/{document_id}/process")
 def trigger_extraction(document_id: int, db: Session = Depends(get_db)):
