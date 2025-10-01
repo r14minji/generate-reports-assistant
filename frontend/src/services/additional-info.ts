@@ -9,22 +9,38 @@ export interface SuggestedField {
   placeholder?: string;
 }
 
+export interface IndustryInsight {
+  title: string;
+  content: string;
+  type: "positive" | "negative" | "neutral";
+}
+
 export interface AdditionalInfoSuggestion {
   document_id: number;
   industry: string;
   ai_reason: string;
+  industry_outlook?: string;
+  insights?: IndustryInsight[];
   suggested_fields: SuggestedField[];
+}
+
+export interface CustomFields {
+  special_considerations?: string;
+  management_evaluation?: string;
+  other_notes?: string;
 }
 
 export interface AdditionalInfoInput {
   document_id: number;
   field_data: Record<string, string>;
+  custom_fields?: CustomFields;
 }
 
 export interface AdditionalInfoSaved {
   id: number;
   document_id: number;
   field_data: Record<string, string>;
+  custom_fields?: CustomFields;
   created_at: string;
   updated_at: string;
 }
@@ -42,11 +58,13 @@ export const additionalInfoService = {
   // 추가 정보 저장
   saveAdditionalInfo: async (
     documentId: number,
-    fieldData: Record<string, string>
+    fieldData: Record<string, string>,
+    customFields?: CustomFields
   ): Promise<AdditionalInfoSaved> => {
     const payload: AdditionalInfoInput = {
       document_id: documentId,
       field_data: fieldData,
+      custom_fields: customFields,
     };
 
     return httpClient.post<AdditionalInfoSaved, AdditionalInfoInput>(
@@ -67,11 +85,13 @@ export const additionalInfoService = {
   // 추가 정보 수정
   updateAdditionalInfo: async (
     documentId: number,
-    fieldData: Record<string, string>
+    fieldData: Record<string, string>,
+    customFields?: CustomFields
   ): Promise<AdditionalInfoSaved> => {
     const payload: AdditionalInfoInput = {
       document_id: documentId,
       field_data: fieldData,
+      custom_fields: customFields,
     };
 
     return httpClient.put<AdditionalInfoSaved, AdditionalInfoInput>(

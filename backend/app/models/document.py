@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -51,6 +51,25 @@ class DocumentExtraction(Base):
 
     # Relationship
     document = relationship("Document", back_populates="extraction")
+
+class AdditionalInfo(Base):
+    __tablename__ = "additional_info"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False, unique=True)
+
+    # AI 제안 필드 데이터 (JSON)
+    field_data = Column(JSON, nullable=True)
+
+    # 사용자 커스텀 필드 (JSON)
+    custom_fields = Column(JSON, nullable=True)
+
+    # 메타데이터
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    document = relationship("Document", backref="additional_info")
 
 class Analysis(Base):
     __tablename__ = "analyses"

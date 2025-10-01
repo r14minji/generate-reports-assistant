@@ -14,6 +14,7 @@ const steps: Step[] = [
   { id: 'dashboard', name: 'Dashboard', status: 'upcoming' },
   { id: 'upload', name: 'Upload', status: 'upcoming' },
   { id: 'extraction', name: 'Data Extraction', status: 'upcoming' },
+  { id: 'additional-info', name: 'Additional Info', status: 'upcoming' },
   { id: 'analysis', name: 'Risk Analysis', status: 'upcoming' },
   { id: 'report', name: 'Report', status: 'upcoming' },
   { id: 'final', name: 'Complete', status: 'upcoming' }

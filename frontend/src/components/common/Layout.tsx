@@ -28,6 +28,7 @@ export default function Layout({ children, title, subtitle }: LayoutProps) {
       dashboard: 'Dashboard',
       upload: 'Document Upload',
       extraction: 'Data Extraction',
+      'additional-info': 'Additional Information',
       analysis: 'Risk Analysis',
       report: 'Report Generation',
       final: 'Analysis Complete'
