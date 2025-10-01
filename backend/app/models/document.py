@@ -12,6 +12,7 @@ class Document(Base):
     file_size = Column(Integer)
     upload_date = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="uploaded")  # uploaded, processing, completed, failed
+    review_opinion = Column(Text, nullable=True)  # 심사 의견
 
     # Relationship
     extraction = relationship("DocumentExtraction", back_populates="document", uselist=False)
@@ -63,6 +64,9 @@ class AdditionalInfo(Base):
 
     # 사용자 커스텀 필드 (JSON)
     custom_fields = Column(JSON, nullable=True)
+
+    # 담보 정보 (JSON)
+    collateral_data = Column(JSON, nullable=True)
 
     # 메타데이터
     created_at = Column(DateTime, default=datetime.utcnow)

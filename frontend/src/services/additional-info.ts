@@ -30,10 +30,24 @@ export interface CustomFields {
   other_notes?: string;
 }
 
+export interface CollateralData {
+  type: "담보" | "신용" | "기타";
+  appraisal_value?: string;
+  auction_rate?: string;
+  senior_lien?: string;
+  co_lien_share?: string;
+  our_allocation?: string;
+  recovery_expected?: string;
+  recovery_amount?: string;
+  loss_amount?: string;
+  loss_opinion?: string;
+}
+
 export interface AdditionalInfoInput {
   document_id: number;
   field_data: Record<string, string>;
   custom_fields?: CustomFields;
+  collateral_data?: CollateralData;
 }
 
 export interface AdditionalInfoSaved {
@@ -41,6 +55,7 @@ export interface AdditionalInfoSaved {
   document_id: number;
   field_data: Record<string, string>;
   custom_fields?: CustomFields;
+  collateral_data?: CollateralData;
   created_at: string;
   updated_at: string;
 }
@@ -59,12 +74,14 @@ export const additionalInfoService = {
   saveAdditionalInfo: async (
     documentId: number,
     fieldData: Record<string, string>,
-    customFields?: CustomFields
+    customFields?: CustomFields,
+    collateralData?: CollateralData
   ): Promise<AdditionalInfoSaved> => {
     const payload: AdditionalInfoInput = {
       document_id: documentId,
       field_data: fieldData,
       custom_fields: customFields,
+      collateral_data: collateralData,
     };
 
     return httpClient.post<AdditionalInfoSaved, AdditionalInfoInput>(
@@ -86,12 +103,14 @@ export const additionalInfoService = {
   updateAdditionalInfo: async (
     documentId: number,
     fieldData: Record<string, string>,
-    customFields?: CustomFields
+    customFields?: CustomFields,
+    collateralData?: CollateralData
   ): Promise<AdditionalInfoSaved> => {
     const payload: AdditionalInfoInput = {
       document_id: documentId,
       field_data: fieldData,
       custom_fields: customFields,
+      collateral_data: collateralData,
     };
 
     return httpClient.put<AdditionalInfoSaved, AdditionalInfoInput>(

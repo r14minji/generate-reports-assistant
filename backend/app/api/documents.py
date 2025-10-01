@@ -4,12 +4,20 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.document import Document
 from app.schemas.document import DocumentUploadResponse
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+# 심사 의견 스키마
+class ReviewOpinionRequest(BaseModel):
+    review_opinion: str
+
+class ReviewOpinionResponse(BaseModel):
+    review_opinion: str | None
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

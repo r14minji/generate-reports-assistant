@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 from datetime import datetime
 
 
@@ -9,10 +9,24 @@ class CustomFields(BaseModel):
     other_notes: Optional[str] = None
 
 
+class CollateralData(BaseModel):
+    type: Literal["담보", "신용", "기타"]
+    appraisal_value: Optional[str] = None
+    auction_rate: Optional[str] = None
+    senior_lien: Optional[str] = None
+    co_lien_share: Optional[str] = None
+    our_allocation: Optional[str] = None
+    recovery_expected: Optional[str] = None
+    recovery_amount: Optional[str] = None
+    loss_amount: Optional[str] = None
+    loss_opinion: Optional[str] = None
+
+
 class AdditionalInfoBase(BaseModel):
     document_id: int
     field_data: Optional[Dict[str, Any]] = None
     custom_fields: Optional[CustomFields] = None
+    collateral_data: Optional[CollateralData] = None
 
 
 class AdditionalInfoCreate(AdditionalInfoBase):
@@ -22,6 +36,7 @@ class AdditionalInfoCreate(AdditionalInfoBase):
 class AdditionalInfoUpdate(BaseModel):
     field_data: Optional[Dict[str, Any]] = None
     custom_fields: Optional[CustomFields] = None
+    collateral_data: Optional[CollateralData] = None
 
 
 class AdditionalInfoResponse(AdditionalInfoBase):

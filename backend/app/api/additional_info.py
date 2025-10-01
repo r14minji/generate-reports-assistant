@@ -168,11 +168,17 @@ def save_additional_info(
     if data.custom_fields:
         custom_fields_dict = data.custom_fields.model_dump(exclude_none=True)
 
+    # collateral_data를 dict로 변환
+    collateral_data_dict = None
+    if data.collateral_data:
+        collateral_data_dict = data.collateral_data.model_dump(exclude_none=True)
+
     # 추가 정보 생성
     additional_info = AdditionalInfo(
         document_id=document_id,
         field_data=data.field_data,
         custom_fields=custom_fields_dict,
+        collateral_data=collateral_data_dict,
     )
 
     db.add(additional_info)
@@ -186,6 +192,7 @@ def save_additional_info(
 def get_additional_info(document_id: int, db: Session = Depends(get_db)):
     """
     저장된 추가 정보를 조회합니다.
+    추가 정보가 없으면 404를 반환합니다 (사용자가 Skip한 경우).
     """
     # 문서 존재 확인
     document = db.query(Document).filter(Document.id == document_id).first()
@@ -203,6 +210,29 @@ def get_additional_info(document_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="추가 정보를 찾을 수 없습니다.")
 
     return additional_info
+
+
+def get_additional_info_optional(
+    document_id: int, db: Session
+) -> AdditionalInfo | None:
+    """
+    추가 정보를 선택적으로 조회합니다 (Analysis/Report 생성 시 사용).
+    추가 정보가 없어도 None을 반환하며 에러를 발생시키지 않습니다.
+
+    사용 예시:
+    additional_info = get_additional_info_optional(document_id, db)
+    if additional_info:
+        # 추가 정보를 활용한 분석
+        ...
+    else:
+        # 기본 정보만으로 분석
+        ...
+    """
+    return (
+        db.query(AdditionalInfo)
+        .filter(AdditionalInfo.document_id == document_id)
+        .first()
+    )
 
 
 @router.put("/{document_id}", response_model=AdditionalInfoResponse)
@@ -230,6 +260,11 @@ def update_additional_info(
 
     if data.custom_fields is not None:
         additional_info.custom_fields = data.custom_fields.model_dump(
+            exclude_none=True
+        )
+
+    if data.collateral_data is not None:
+        additional_info.collateral_data = data.collateral_data.model_dump(
             exclude_none=True
         )
 

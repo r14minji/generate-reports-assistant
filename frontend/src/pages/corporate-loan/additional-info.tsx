@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import Layout from "../../components/common/Layout";
+import CollateralInfo from "../../components/risk-analysis/CollateralInfo";
+import { additionalInfoService } from "../../services/additional-info";
 
 interface SuggestedField {
   id: string;
@@ -26,13 +28,27 @@ interface AdditionalInfoData {
   insights?: IndustryInsight[];
 }
 
+interface CollateralData {
+  type: "담보" | "신용" | "기타";
+  appraisalValue: string;
+  auctionRate: string;
+  seniorLien: string;
+  coLienShare: string;
+  ourAllocation: string;
+  recoveryExpected: string;
+  recoveryAmount: string;
+  lossAmount: string;
+  lossOpinion: string;
+}
+
 export default function AdditionalInfo() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const documentId = Number(searchParams.get("documentId")) || 1;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfoData | null>(null);
+  const [additionalInfo, setAdditionalInfo] =
+    useState<AdditionalInfoData | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [customFields, setCustomFields] = useState({
     special_considerations: "",
@@ -40,12 +56,52 @@ export default function AdditionalInfo() {
     other_notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSkipModal, setShowSkipModal] = useState(false);
+
+  // 담보 정보 state
+  const [collateralType, setCollateralType] = useState<
+    "담보" | "신용" | "기타"
+  >("담보");
+  const [collateralData, setCollateralData] = useState<CollateralData>({
+    type: "담보",
+    appraisalValue: "",
+    auctionRate: "",
+    seniorLien: "",
+    coLienShare: "",
+    ourAllocation: "",
+    recoveryExpected: "",
+    recoveryAmount: "",
+    lossAmount: "",
+    lossOpinion: "",
+  });
 
   useEffect(() => {
-    // TODO: API 연동 - AI가 산업 분석 후 필요한 추가 정보 제안
-    // const data = await additionalInfoService.getSuggestedFields(documentId);
+    const fetchSuggestions = async () => {
+      try {
+        // API 연동 - AI가 산업 분석 후 필요한 추가 정보 제안
+        const data = await additionalInfoService.getSuggestedFields(documentId);
 
-    // 임시 목업 데이터
+        setAdditionalInfo({
+          industry: data.industry,
+          aiReason: data.ai_reason,
+          industryOutlook: data.industry_outlook,
+          insights: data.insights,
+          suggestedFields: data.suggested_fields,
+        });
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Failed to load suggestions:", error);
+        setIsLoading(false);
+        // 에러 발생 시 null로 설정하여 에러 UI 표시
+      }
+    };
+
+    fetchSuggestions();
+  }, [documentId]);
+
+  // 개발용 목업 데이터 (API 연동 후 삭제 가능)
+  /*
+  useEffect(() => {
     setTimeout(() => {
       const mockData: AdditionalInfoData = {
         industry: "자동차 부품 제조업",
@@ -143,6 +199,7 @@ export default function AdditionalInfo() {
       setIsLoading(false);
     }, 1500);
   }, [documentId]);
+  */
 
   const handleInputChange = (fieldId: string, value: string) => {
     setFormData((prev) => ({
@@ -160,12 +217,25 @@ export default function AdditionalInfo() {
   };
 
   const handleCustomFieldChange = (
-    fieldName: "special_considerations" | "management_evaluation" | "other_notes",
+    fieldName:
+      | "special_considerations"
+      | "management_evaluation"
+      | "other_notes",
     value: string
   ) => {
     setCustomFields((prev) => ({
       ...prev,
       [fieldName]: value,
+    }));
+  };
+
+  const handleCollateralChange = (
+    field: keyof CollateralData,
+    value: string
+  ) => {
+    setCollateralData((prev) => ({
+      ...prev,
+      [field]: value,
     }));
   };
 
@@ -190,24 +260,36 @@ export default function AdditionalInfo() {
     }
 
     try {
-      // TODO: API 연동 - 추가 정보 저장 (AI 제안 필드 + 사용자 커스텀 필드)
-      // await additionalInfoService.saveAdditionalInfo(
-      //   documentId,
-      //   formData,
-      //   customFields
-      // );
+      // 담보 정보를 백엔드 형식으로 변환 (camelCase -> snake_case)
+      const collateralDataForBackend = {
+        type: collateralData.type,
+        appraisal_value: collateralData.appraisalValue,
+        auction_rate: collateralData.auctionRate,
+        senior_lien: collateralData.seniorLien,
+        co_lien_share: collateralData.coLienShare,
+        our_allocation: collateralData.ourAllocation,
+        recovery_expected: collateralData.recoveryExpected,
+        recovery_amount: collateralData.recoveryAmount,
+        loss_amount: collateralData.lossAmount,
+        loss_opinion: collateralData.lossOpinion,
+      };
 
-      console.log("Saving additional info:", {
+      // API 연동 - 추가 정보 저장 (AI 제안 필드 + 사용자 커스텀 필드 + 담보 정보)
+      await additionalInfoService.saveAdditionalInfo(
         documentId,
-        field_data: formData,
-        custom_fields: customFields,
-      });
+        formData,
+        customFields,
+        collateralDataForBackend
+      );
+
+      console.log("Additional info saved successfully");
 
       // Analysis 페이지로 이동 (documentId 전달)
       navigate(`/corporate-loan/analysis?documentId=${documentId}`);
     } catch (error) {
       console.error("Failed to save additional info:", error);
-      // TODO: 에러 처리 UI 추가
+      // TODO: 에러 처리 UI 추가 (토스트 메시지 등)
+      alert("추가 정보 저장에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -216,8 +298,19 @@ export default function AdditionalInfo() {
   };
 
   const handleSkip = () => {
-    // 추가 정보 입력을 건너뛰고 다음 단계로
+    // 경고 모달 표시
+    setShowSkipModal(true);
+  };
+
+  const handleConfirmSkip = () => {
+    // 추가 정보 없이 다음 단계로 이동
+    setShowSkipModal(false);
     navigate(`/corporate-loan/analysis?documentId=${documentId}`);
+  };
+
+  const handleCancelSkip = () => {
+    // 모달 닫기
+    setShowSkipModal(false);
   };
 
   if (isLoading) {
@@ -330,8 +423,8 @@ export default function AdditionalInfo() {
                         {insight.type === "positive"
                           ? "기회"
                           : insight.type === "negative"
-                          ? "위험"
-                          : "참고"}
+                            ? "위험"
+                            : "참고"}
                       </span>
                     </div>
                     <p className={`text-xs ${color.text} leading-relaxed`}>
@@ -386,9 +479,7 @@ export default function AdditionalInfo() {
             <div key={field.id}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {field.label}
-                {field.required && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
 
@@ -426,6 +517,16 @@ export default function AdditionalInfo() {
         </div>
       </div>
 
+      {/* 담보 정보 입력 섹션 */}
+      <div className="mt-6">
+        <CollateralInfo
+          collateralType={collateralType}
+          collateralData={collateralData}
+          onTypeChange={setCollateralType}
+          onDataChange={handleCollateralChange}
+        />
+      </div>
+
       {/* 사용자 추가 입력 섹션 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -447,7 +548,10 @@ export default function AdditionalInfo() {
             <textarea
               value={customFields.special_considerations}
               onChange={(e) =>
-                handleCustomFieldChange("special_considerations", e.target.value)
+                handleCustomFieldChange(
+                  "special_considerations",
+                  e.target.value
+                )
               }
               placeholder="예: 최근 신규 사업 진출, 대규모 설비 투자 계획, 정부 지원 사업 선정 등"
               rows={4}
@@ -534,6 +638,57 @@ export default function AdditionalInfo() {
           </Button>
         </div>
       </div>
+
+      {/* Skip 경고 모달 */}
+      {showSkipModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="w-10 h-10 text-yellow-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    추가 정보 없이 진행하시겠습니까?
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    추가 정보를 입력하지 않으면 AI 분석의 정확도가 떨어질 수
+                    있습니다. 업계 동향, 경영진 평가, 특별 고려사항 등의 정보는
+                    리스크 분석과 최종 리포트 작성에 중요한 참고 자료로
+                    활용됩니다.
+                  </p>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-yellow-800">
+                      <strong>권장사항:</strong> 가능한 한 추가 정보를 입력하여
+                      더 정확한 분석 결과를 받으시기 바랍니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <Button variant="outline" onClick={handleCancelSkip}>
+                  취소
+                </Button>
+                <Button onClick={handleConfirmSkip}>그래도 건너뛰기</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
