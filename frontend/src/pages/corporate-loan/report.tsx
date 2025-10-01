@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import Layout from "../../components/common/Layout";
+import { documentsService } from "../../services/documents";
 
 export default function Report() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function Report() {
   const documentId = Number(searchParams.get("documentId")) || 1;
 
   const [isProcessing, setIsProcessing] = useState(true);
+  const [reviewOpinion, setReviewOpinion] = useState<string>("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -17,12 +19,27 @@ export default function Report() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const fetchReviewOpinion = async () => {
+      try {
+        const response = await documentsService.getReviewOpinion(documentId);
+        setReviewOpinion(response.review_opinion || "");
+      } catch (error) {
+        console.error("심사 의견 조회 실패:", error);
+      }
+    };
+
+    if (!isProcessing) {
+      fetchReviewOpinion();
+    }
+  }, [documentId, isProcessing]);
+
   const handleBack = () => {
     navigate(`/corporate-loan/analysis?documentId=${documentId}`);
   };
 
-  const handleNext = () => {
-    navigate(`/corporate-loan/final?documentId=${documentId}`);
+  const handleDashboard = () => {
+    navigate("/corporate-loan/dashboard");
   };
 
   return (
@@ -109,9 +126,7 @@ export default function Report() {
             {/* Executive Summary */}
             <div className="border-b border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  요약
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900">요약</h3>
                 <Button variant="outline" size="sm">
                   <svg
                     className="w-4 h-4 mr-1"
@@ -130,9 +145,10 @@ export default function Report() {
                 </Button>
               </div>
               <div className="text-sm text-gray-600 leading-relaxed">
-                ABC 자동차부품 주식회사는 안정적인 기술력을 보유한 자동차 부품 전문 제조업체입니다.
-                다만, 높은 고객 집중도가 리스크 관리 측면에서 개선이 필요한 부분입니다.
-                재무 구조 개선을 통한 신용등급 상향 여지가 있습니다.
+                ABC 자동차부품 주식회사는 안정적인 기술력을 보유한 자동차 부품
+                전문 제조업체입니다. 다만, 높은 고객 집중도가 리스크 관리
+                측면에서 개선이 필요한 부분입니다. 재무 구조 개선을 통한
+                신용등급 상향 여지가 있습니다.
               </div>
             </div>
 
@@ -232,25 +248,19 @@ export default function Report() {
                 </Button>
               </div>
               <div className="text-sm text-gray-600 leading-relaxed">
-                <p className="font-medium mb-2 text-red-700">
-                  고위험 요소:
-                </p>
+                <p className="font-medium mb-2 text-red-700">고위험 요소:</p>
                 <div className="space-y-1 mb-4">
                   <p>• 고객 집중도 위험: 현대그룹 매출 의존도 87%</p>
                   <p>• 산업 위험 임계값(80%) 초과, 즉각적인 개선 필요</p>
                 </div>
 
-                <p className="font-medium mb-2 text-yellow-700">
-                  중위험 요소:
-                </p>
+                <p className="font-medium mb-2 text-yellow-700">중위험 요소:</p>
                 <div className="space-y-1 mb-4">
                   <p>• 원자재 가격 변동성: 철강 원자재 의존도 60%</p>
                   <p>• 수익성 개선 필요: 영업이익률이 산업평균 이하</p>
                 </div>
 
-                <p className="font-medium mb-2 text-green-700">
-                  긍정 요소:
-                </p>
+                <p className="font-medium mb-2 text-green-700">긍정 요소:</p>
                 <div className="space-y-1">
                   <p>• 안정적인 기술력 및 품질관리 시스템</p>
                   <p>• 장기 거래관계 유지 (10년 이상)</p>
@@ -308,8 +318,7 @@ export default function Report() {
               </div>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                  {/* TODO: 이전 페이지(analysis)에서 작성한 심사 의견을 불러와야 함 */}
-                  심사 의견이 입력되지 않았습니다.
+                  {reviewOpinion || "심사 의견이 입력되지 않았습니다."}
                 </p>
               </div>
             </div>
@@ -317,7 +326,7 @@ export default function Report() {
         </div>
       )}
 
-      <div className="flex justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 ">
         <Button variant="outline" onClick={handleBack}>
           <svg
             className="w-4 h-4 mr-2"
@@ -334,10 +343,9 @@ export default function Report() {
           </svg>
           이전
         </Button>
-        <Button onClick={handleNext}>
-          완료
+        <Button variant="outline">
           <svg
-            className="w-4 h-4 ml-2"
+            className="w-4 h-4 mr-2"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -346,9 +354,42 @@ export default function Report() {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M9 5l7 7-7 7"
+              d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
             />
           </svg>
+          Email Report
+        </Button>
+        <Button variant="outline">
+          <svg
+            className="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          Save to System
+        </Button>
+        <Button variant="secondary" onClick={handleDashboard}>
+          <svg
+            className="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2v0a2 2 0 012-2h6l2 2h6a2 2 0 012 2z"
+            />
+          </svg>
+          Dashboard
         </Button>
       </div>
     </Layout>

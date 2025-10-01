@@ -4,6 +4,7 @@ import Button from "../../components/common/Button";
 import Layout from "../../components/common/Layout";
 import FileAttachment from "../../components/risk-analysis/FileAttachment";
 import ReviewOpinion from "../../components/risk-analysis/ReviewOpinion";
+import { documentsService } from "../../services/documents";
 
 export default function Analysis() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function Analysis() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [reviewOpinion, setReviewOpinion] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,8 +27,18 @@ export default function Analysis() {
     navigate(`/corporate-loan/additional-info?documentId=${documentId}`);
   };
 
-  const handleNext = () => {
-    navigate(`/corporate-loan/report?documentId=${documentId}`);
+  const handleNext = async () => {
+    try {
+      setIsSaving(true);
+      // 심사 의견 저장
+      await documentsService.updateReviewOpinion(documentId, reviewOpinion);
+      navigate(`/corporate-loan/report?documentId=${documentId}`);
+    } catch (error) {
+      console.error("심사 의견 저장 실패:", error);
+      alert("심사 의견 저장에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -266,21 +278,23 @@ export default function Analysis() {
           </svg>
           이전
         </Button>
-        <Button onClick={handleNext}>
-          리포트 생성
-          <svg
-            className="w-4 h-4 ml-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
+        <Button onClick={handleNext} disabled={isSaving}>
+          {isSaving ? "저장 중..." : "리포트 생성"}
+          {!isSaving && (
+            <svg
+              className="w-4 h-4 ml-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          )}
         </Button>
       </div>
     </Layout>

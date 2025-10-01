@@ -93,3 +93,34 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"파일 업로드 실패: {str(e)}")
     finally:
         await file.close()
+
+@router.put("/{document_id}/review-opinion", response_model=ReviewOpinionResponse)
+def update_review_opinion(
+    document_id: int,
+    request: ReviewOpinionRequest,
+    db: Session = Depends(get_db)
+):
+    """문서의 심사 의견을 업데이트합니다."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    document.review_opinion = request.review_opinion
+    db.commit()
+    db.refresh(document)
+
+    return ReviewOpinionResponse(review_opinion=document.review_opinion)
+
+@router.get("/{document_id}/review-opinion", response_model=ReviewOpinionResponse)
+def get_review_opinion(
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """문서의 심사 의견을 조회합니다."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    return ReviewOpinionResponse(review_opinion=document.review_opinion)

@@ -9,6 +9,10 @@ export interface DocumentUploadResponse {
   status: string;
 }
 
+export interface ReviewOpinionResponse {
+  review_opinion: string | null;
+}
+
 export const documentsService = {
   // 파일 업로드
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
@@ -23,6 +27,26 @@ export const documentsService = {
           "Content-Type": "multipart/form-data",
         },
       }
+    );
+  },
+
+  // 심사 의견 저장
+  updateReviewOpinion: async (
+    documentId: number,
+    reviewOpinion: string
+  ): Promise<ReviewOpinionResponse> => {
+    return httpClient.put<ReviewOpinionResponse>(
+      `/api/documents/${documentId}/review-opinion`,
+      { review_opinion: reviewOpinion }
+    );
+  },
+
+  // 심사 의견 조회
+  getReviewOpinion: async (
+    documentId: number
+  ): Promise<ReviewOpinionResponse> => {
+    return httpClient.get<ReviewOpinionResponse>(
+      `/api/documents/${documentId}/review-opinion`
     );
   },
 };
