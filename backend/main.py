@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
 from app.api import dashboard, documents, extraction, additional_info
+from dotenv import load_dotenv
+
+# 환경 변수 로드
+load_dotenv()
 
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)

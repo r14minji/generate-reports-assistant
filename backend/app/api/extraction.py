@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime
 import random
@@ -6,6 +6,7 @@ import random
 from app.core.database import get_db
 from app.models.document import Document, DocumentExtraction
 from app.schemas.extraction import ExtractionDataResponse, ExtractionDataUpdate
+from app.services.extraction_service import ExtractionService
 
 router = APIRouter(prefix="/api/extraction", tags=["extraction"])
 
@@ -94,7 +95,7 @@ def update_extraction_data(
 def trigger_extraction(document_id: int, db: Session = Depends(get_db)):
     """
     문서 추출 프로세스를 수동으로 트리거합니다.
-    (실제 OCR 구현 시 사용)
+    OCR + LLM을 사용하여 문서에서 데이터를 추출합니다.
     """
 
     document = db.query(Document).filter(Document.id == document_id).first()
@@ -109,7 +110,17 @@ def trigger_extraction(document_id: int, db: Session = Depends(get_db)):
     if existing:
         return {"message": "이미 추출된 데이터가 있습니다.", "extraction_id": existing.id}
 
-    document.status = "processing"
-    db.commit()
+    try:
+        # ExtractionService를 사용하여 문서 처리
+        extraction_service = ExtractionService()
+        extraction = extraction_service.process_document(document_id, db)
 
-    return {"message": "추출 프로세스가 시작되었습니다.", "document_id": document_id}
+        return {
+            "message": "추출 프로세스가 완료되었습니다.",
+            "document_id": document_id,
+            "extraction_id": extraction.id
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"추출 실패: {str(e)}")

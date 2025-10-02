@@ -58,7 +58,10 @@ export const documentsService = {
   // 파일 업로드
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
     const formData = new FormData();
+    console.log("file", file);
+    console.log("formData", formData);
     formData.append("file", file);
+    console.log("formData after append", formData.get("file"));
 
     return httpClient.post<DocumentUploadResponse, FormData>(
       "/api/documents/upload",
@@ -67,6 +70,7 @@ export const documentsService = {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        timeout: 300000, // 5분 (OCR/LLM 처리 시간 고려)
       }
     );
   },
