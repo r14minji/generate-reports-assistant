@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 import os
 import shutil
@@ -6,9 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.models.document import Document
 from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse
+from app.services.extraction_service import ExtractionService
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -26,12 +27,29 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".jpg", ".jpeg", ".png", ".gif"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
+# PDF와 이미지 파일은 자동으로 OCR 처리
+OCR_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".gif"}
+
+
+def process_document_background(document_id: int):
+    """백그라운드에서 문서를 처리합니다."""
+    db = SessionLocal()
+    try:
+        extraction_service = ExtractionService()
+        extraction_service.process_document(document_id, db)
+        print(f"[Background] 문서 {document_id} 처리 완료")
+    except Exception as e:
+        print(f"[Background] 문서 {document_id} 처리 실패: {str(e)}")
+    finally:
+        db.close()
+
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """파일을 업로드하고 데이터베이스에 저장합니다."""
+    """파일을 업로드하고 데이터베이스에 저장합니다. PDF/이미지는 자동으로 OCR 처리됩니다."""
 
     try:
         # 파일 확장자 검증
@@ -73,6 +91,11 @@ async def upload_document(
         db.add(db_document)
         db.commit()
         db.refresh(db_document)
+
+        # PDF 또는 이미지 파일인 경우 백그라운드에서 OCR 처리
+        if file_ext in OCR_EXTENSIONS:
+            background_tasks.add_task(process_document_background, db_document.id)
+            print(f"[Upload] 문서 {db_document.id} OCR 처리 예약됨")
 
         return DocumentUploadResponse(
             id=db_document.id,
