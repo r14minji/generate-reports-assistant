@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.document import Document
-from app.schemas.document import DocumentUploadResponse
+from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -124,3 +124,37 @@ def get_review_opinion(
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
     return ReviewOpinionResponse(review_opinion=document.review_opinion)
+
+@router.get("/{document_id}/report", response_model=ReportResponse)
+def get_report(
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """문서의 리포트 데이터를 조회합니다."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    if not document.report_data:
+        raise HTTPException(status_code=404, detail="리포트 데이터가 없습니다.")
+
+    return ReportResponse(data=document.report_data)
+
+@router.post("/{document_id}/report", response_model=ReportResponse)
+def update_report(
+    document_id: int,
+    request: ReportRequest,
+    db: Session = Depends(get_db)
+):
+    """문서의 리포트 데이터를 업데이트합니다."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    document.report_data = request.data.model_dump()
+    db.commit()
+    db.refresh(document)
+
+    return ReportResponse(data=document.report_data)

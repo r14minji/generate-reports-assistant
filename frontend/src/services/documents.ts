@@ -13,6 +13,47 @@ export interface ReviewOpinionResponse {
   review_opinion: string | null;
 }
 
+export interface ReportData {
+  summary: string;
+  company: {
+    name: string;
+    industry: string;
+    established_year: string;
+    main_business: string;
+    main_clients: string;
+  };
+  financial: {
+    ratios: {
+      debt_ratio: string;
+      current_ratio: string;
+      operating_margin: string;
+    };
+    revenue: {
+      current_year: string;
+      next_year: string;
+      year_after_next: string;
+    };
+  };
+  risk: {
+    high: string[];
+    medium: string[];
+    positive: string[];
+  };
+  loan: {
+    conditions: {
+      approval_limit: string;
+      interest_rate: string;
+      repayment_period: string;
+      collateral: string;
+    };
+    approval_requirements: string[];
+  };
+}
+
+export interface ReportResponse {
+  data: ReportData;
+}
+
 export const documentsService = {
   // 파일 업로드
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
@@ -47,6 +88,24 @@ export const documentsService = {
   ): Promise<ReviewOpinionResponse> => {
     return httpClient.get<ReviewOpinionResponse>(
       `/api/documents/${documentId}/review-opinion`
+    );
+  },
+
+  // 리포트 데이터 조회
+  getReport: async (documentId: number): Promise<ReportResponse> => {
+    return httpClient.get<ReportResponse>(
+      `/api/documents/${documentId}/report`
+    );
+  },
+
+  // 리포트 데이터 저장
+  updateReport: async (
+    documentId: number,
+    data: ReportData
+  ): Promise<ReportResponse> => {
+    return httpClient.post<ReportResponse>(
+      `/api/documents/${documentId}/report`,
+      { data }
     );
   },
 };

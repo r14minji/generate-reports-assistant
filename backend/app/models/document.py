@@ -13,6 +13,7 @@ class Document(Base):
     upload_date = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="uploaded")  # uploaded, processing, completed, failed
     review_opinion = Column(Text, nullable=True)  # 심사 의견
+    report_data = Column(JSON, nullable=True)  # 리포트 데이터
 
     # Relationship
     extraction = relationship("DocumentExtraction", back_populates="document", uselist=False)
