@@ -48,6 +48,7 @@ export interface ReportData {
     };
     approval_requirements: string[];
   };
+  additional_information?: string;
 }
 
 export interface ReportResponse {

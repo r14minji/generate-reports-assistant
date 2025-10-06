@@ -5,9 +5,11 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel
+import google.generativeai as genai
+import json
 
 from app.core.database import get_db, SessionLocal
-from app.models.document import Document
+from app.models.document import Document, AdditionalInfo
 from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse
 from app.services.extraction_service import ExtractionService
 
@@ -148,12 +150,60 @@ def get_review_opinion(
 
     return ReviewOpinionResponse(review_opinion=document.review_opinion)
 
+def generate_additional_information(additional_info_data: dict) -> str:
+    """추가 정보를 기반으로 LLM이 인사이트를 생성합니다."""
+    try:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        # 추가 정보 데이터를 텍스트로 변환
+        field_data = additional_info_data.get("field_data", {})
+        custom_fields = additional_info_data.get("custom_fields", {})
+        collateral_data = additional_info_data.get("collateral_data", {})
+
+        context = f"""
+다음은 대출 심사 과정에서 수집된 추가 정보입니다:
+
+【AI 제안 필드 데이터】
+{json.dumps(field_data, ensure_ascii=False, indent=2)}
+
+【사용자 입력 정보】
+{json.dumps(custom_fields, ensure_ascii=False, indent=2)}
+
+【담보 정보】
+{json.dumps(collateral_data, ensure_ascii=False, indent=2)}
+
+위 정보를 종합적으로 분석하여, 대출 심사에 도움이 되는 핵심 인사이트를 3-5개 문단으로 작성해주세요.
+각 문단은 다음 관점을 포함해야 합니다:
+
+1. 업계 특성 및 경쟁력 분석
+2. 재무 안정성 및 성장 가능성
+3. 경영진 역량 및 전략적 방향성
+4. 담보 가치 및 회수 가능성 (담보가 있는 경우)
+5. 종합적인 신용 평가 및 리스크 요인
+
+전문적이고 명확한 한국어로 작성하되, 구체적인 수치와 근거를 포함해주세요.
+"""
+
+        response = model.generate_content(
+            context,
+            generation_config=genai.GenerationConfig(
+                temperature=0.3,
+            )
+        )
+
+        return response.text.strip()
+
+    except Exception as e:
+        print(f"[LLM] 추가 정보 생성 실패: {str(e)}")
+        return "추가 정보를 생성할 수 없습니다."
+
 @router.get("/{document_id}/report", response_model=ReportResponse)
 def get_report(
     document_id: int,
     db: Session = Depends(get_db)
 ):
-    """문서의 리포트 데이터를 조회합니다."""
+    """문서의 리포트 데이터를 조회합니다. 추가 정보가 있으면 LLM으로 인사이트를 생성합니다."""
     document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
@@ -162,7 +212,25 @@ def get_report(
     if not document.report_data:
         raise HTTPException(status_code=404, detail="리포트 데이터가 없습니다.")
 
-    return ReportResponse(data=document.report_data)
+    # 추가 정보가 있는 경우 LLM으로 인사이트 생성
+    additional_info = db.query(AdditionalInfo).filter(
+        AdditionalInfo.document_id == document_id
+    ).first()
+
+    report_data = document.report_data.copy()
+
+    if additional_info and (additional_info.field_data or additional_info.custom_fields or additional_info.collateral_data):
+        # LLM으로 추가 정보 생성
+        additional_info_data = {
+            "field_data": additional_info.field_data or {},
+            "custom_fields": additional_info.custom_fields or {},
+            "collateral_data": additional_info.collateral_data or {}
+        }
+        report_data["additional_information"] = generate_additional_information(additional_info_data)
+    else:
+        report_data["additional_information"] = None
+
+    return ReportResponse(data=report_data)
 
 @router.post("/{document_id}/report", response_model=ReportResponse)
 def update_report(
