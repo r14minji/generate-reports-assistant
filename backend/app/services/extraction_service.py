@@ -64,6 +64,9 @@ class ExtractionService:
                 document_type="기업 대출 신청서"
             )
 
+            if not structured_data:
+                raise ValueError("LLM이 구조화된 데이터를 추출하지 못했습니다.")
+
             print(f"[ExtractionService] 구조화된 데이터 추출 완료")
 
             # 3단계: DB에 저장
@@ -101,13 +104,23 @@ class ExtractionService:
 
             return extraction
 
-        except Exception as e:
-            # 오류 발생 시 문서 상태를 실패로 업데이트
+        except ValueError as e:
+            # OCR 텍스트 추출 실패
             document.status = "failed"
             db.commit()
 
-            print(f"[ExtractionService] 오류 발생: {str(e)}")
-            raise Exception(f"문서 처리 실패: {str(e)}")
+            error_msg = f"텍스트 추출 실패: {str(e)}"
+            print(f"[ExtractionService] {error_msg}")
+            raise ValueError(error_msg)
+
+        except Exception as e:
+            # 기타 오류 발생 시 문서 상태를 실패로 업데이트
+            document.status = "failed"
+            db.commit()
+
+            error_msg = f"문서 처리 중 오류 발생: {str(e)}"
+            print(f"[ExtractionService] {error_msg}")
+            raise Exception(error_msg)
 
     def reprocess_document(self, document_id: int, db: Session) -> DocumentExtraction:
         """

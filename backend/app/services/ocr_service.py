@@ -9,16 +9,14 @@ import cv2
 import numpy as np
 
 
-# Tesseract 실행 파일 경로 지정
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# Tesseract 실행 파일 경로 지정 (macOS)
+pytesseract.pytesseract.tesseract_cmd = "/opt/homebrew/bin/tesseract"
 
 
 class OCRService:
     """PDF 문서에서 텍스트를 추출하는 OCR 서비스"""
 
     def __init__(self):
-        # Windows의 경우 Tesseract 경로 설정 (필요시)
-        # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
         pass
 
     def preprocess_image(self, image: Image.Image) -> Image.Image:
@@ -60,8 +58,11 @@ class OCRService:
             if not os.path.exists(pdf_path):
                 raise FileNotFoundError(f"PDF 파일을 찾을 수 없습니다: {pdf_path}")
 
+            # macOS에서 poppler 경로 설정
+            poppler_path = "/opt/homebrew/bin"
+
             # PDF를 이미지로 변환
-            images = convert_from_path(pdf_path, dpi=dpi)
+            images = convert_from_path(pdf_path, dpi=dpi, poppler_path=poppler_path)
 
             extracted_texts = []
 

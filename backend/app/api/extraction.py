@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from datetime import datetime
-import random
 
 from app.core.database import get_db
 from app.models.document import Document, DocumentExtraction
@@ -14,7 +12,6 @@ router = APIRouter(prefix="/api/extraction", tags=["extraction"])
 def get_extraction_data(document_id: int, db: Session = Depends(get_db)):
     """
     문서 ID로 추출된 데이터를 조회합니다.
-    실제 OCR이 없으므로 목업 데이터를 반환합니다.
     """
 
     # 문서 존재 확인
@@ -22,46 +19,30 @@ def get_extraction_data(document_id: int, db: Session = Depends(get_db)):
     if not document:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
-    # 이미 추출된 데이터가 있는지 확인
+    # 추출된 데이터 조회
     extraction = db.query(DocumentExtraction).filter(
         DocumentExtraction.document_id == document_id
     ).first()
 
-    if extraction:
-        return extraction
+    if not extraction:
+        # 문서 상태에 따라 다른 에러 메시지 반환
+        if document.status == "failed":
+            raise HTTPException(
+                status_code=422,
+                detail="데이터 추출에 실패했습니다. 문서를 다시 업로드하거나 /process 엔드포인트로 재처리를 시도해주세요."
+            )
+        elif document.status == "processing":
+            raise HTTPException(
+                status_code=202,
+                detail="문서 처리 중입니다. 잠시 후 다시 시도해주세요."
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="추출된 데이터가 없습니다. /process 엔드포인트로 추출을 시작해주세요."
+            )
 
-    # 추출 데이터가 없으면 목업 데이터 생성
-    mock_extraction = DocumentExtraction(
-        document_id=document_id,
-        company_name="ABC 주식회사",
-        business_number="123-45-67890",
-        ceo_name="홍길동",
-        establishment_date="2020-03-15",
-        industry="제조업",
-        address="서울특별시 강남구 테헤란로 123",
-        revenue=15000000000.0,  # 150억
-        operating_profit=2500000000.0,  # 25억
-        net_profit=1800000000.0,  # 18억
-        total_assets=30000000000.0,  # 300억
-        total_liabilities=18000000000.0,  # 180억
-        equity=12000000000.0,  # 120억
-        employee_count=150,
-        main_products="자동차 부품, 전자 제품 부품",
-        loan_purpose="신규 생산 라인 구축 및 운영 자금",
-        loan_amount=3000000000.0,  # 30억
-        extracted_at=datetime.utcnow(),
-        extraction_method="mock"
-    )
-
-    db.add(mock_extraction)
-
-    # 문서 상태 업데이트
-    document.status = "processing"
-
-    db.commit()
-    db.refresh(mock_extraction)
-
-    return mock_extraction
+    return extraction
 
 @router.put("/{document_id}", response_model=ExtractionDataResponse)
 def update_extraction_data(

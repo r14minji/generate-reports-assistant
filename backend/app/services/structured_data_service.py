@@ -1,6 +1,6 @@
 import os
 from typing import Dict, Any, Optional
-from openai import OpenAI
+import google.generativeai as genai
 import json
 
 
@@ -8,8 +8,9 @@ class StructuredDataService:
     """문서 텍스트에서 구조화된 데이터를 추출하는 서비스"""
 
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = "gpt-4o-mini"
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        # gemini-2.0-flash: 최신 무료 모델, 빠르고 강력함
+        self.model = genai.GenerativeModel("gemini-2.0-flash")
 
     def extract_document_data(
         self, document_text: str, document_type: str = "기업 대출 신청서"
@@ -49,26 +50,35 @@ class StructuredDataService:
 
 정보가 없는 경우 null을 반환해주세요.
 숫자 필드는 쉼표 없이 숫자만 반환해주세요.
+반드시 JSON 형식으로만 응답하고, 다른 텍스트는 포함하지 마세요.
 
 문서 텍스트:
 {document_text}
 """
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "당신은 문서에서 정보를 정확하게 추출하는 AI 어시스턴트입니다. 반드시 JSON 형식으로만 응답하세요.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0,
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    temperature=0,
+                )
             )
 
-            result = response.choices[0].message.content
+            result = response.text
+
+            if not result:
+                raise ValueError("LLM 응답이 비어있습니다.")
+
+            # JSON 코드 블록 제거 (```json ... ``` 형식)
+            result = result.strip()
+            if result.startswith("```json"):
+                result = result[7:]
+            elif result.startswith("```"):
+                result = result[3:]
+            if result.endswith("```"):
+                result = result[:-3]
+            result = result.strip()
+
             structured_data = json.loads(result)
 
             # 숫자 필드 타입 변환
@@ -94,7 +104,11 @@ class StructuredDataService:
                     except (ValueError, AttributeError):
                         structured_data[field] = None
 
+            print(f"[StructuredDataService] 추출된 필드 수: {len([k for k, v in structured_data.items() if v is not None])}")
+
             return structured_data
 
+        except json.JSONDecodeError as e:
+            raise Exception(f"LLM 응답 JSON 파싱 실패: {str(e)}")
         except Exception as e:
             raise Exception(f"구조화된 데이터 추출 실패: {str(e)}")

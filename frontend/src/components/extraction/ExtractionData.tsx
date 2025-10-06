@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { extractionService, ExtractionData as ExtractionDataType, ExtractionDataUpdate } from "../../services/extraction";
 import Button from "../common/Button";
 
@@ -11,6 +11,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
   const [editData, setEditData] = useState<ExtractionDataType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState({
     company: false,
@@ -18,25 +19,115 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
     loan: false,
   });
 
-  useEffect(() => {
-    const fetchExtractionData = async () => {
-      try {
-        setLoading(true);
-        const extractionData = await extractionService.getExtractionData(documentId);
-        setData(extractionData);
-        setEditData(extractionData);
-        setError(null);
-      } catch (err) {
-        setError("추출 데이터를 불러오는데 실패했습니다.");
-        console.error("Error fetching extraction data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef(0);
+  const [retryCount, setRetryCount] = useState(0); // UI 업데이트를 위한 상태
+  const maxRetries = 60; // 최대 120초 (2초 * 60회)
 
-    if (documentId) {
-      fetchExtractionData();
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
+    retryCountRef.current = 0;
+    setRetryCount(0);
+  }, []);
+
+  const fetchExtractionData = useCallback(async () => {
+    try {
+      console.log(`[Fetch] Attempting to fetch extraction data for document ${documentId}`);
+      const extractionData = await extractionService.getExtractionData(documentId);
+
+      // 데이터 로드 성공
+      console.log('[Fetch] ✅ SUCCESS! Data received:', {
+        id: extractionData.id,
+        company: extractionData.company_name,
+        status: 'loaded'
+      });
+
+      // 상태 업데이트를 배치로 처리
+      setLoading(false);
+      setError(null);
+      setData(extractionData);
+      setEditData(extractionData);
+
+      console.log('[Fetch] State updated - loading: false, data set');
+      console.log('[Fetch] Current data:', extractionData);
+
+      // 성공하면 폴링 중지
+      stopPolling();
+    } catch (err: any) {
+      console.error('[Fetch] ❌ Error:', {
+        status: err.response?.status,
+        detail: err.response?.data?.detail
+      });
+
+      // HTTP 상태 코드에 따라 다른 처리
+      if (err.response?.status === 422) {
+        // 추출 실패
+        setError("데이터 추출에 실패했습니다. 문서를 다시 업로드하거나 재처리를 시도해주세요.");
+        setLoading(false);
+        stopPolling();
+      } else if (err.response?.status === 202) {
+        // 처리 중 - 로딩 상태 유지하고 자동으로 재시도
+        setLoading(true);
+        setError(null);
+
+        // 폴링이 아직 시작되지 않았으면 시작
+        if (!pollIntervalRef.current) {
+          console.log('[Polling] Starting polling...');
+          pollIntervalRef.current = setInterval(() => {
+            retryCountRef.current++;
+            setRetryCount(retryCountRef.current); // UI 업데이트
+            console.log(`[Polling] Retry ${retryCountRef.current}/${maxRetries}`);
+
+            if (retryCountRef.current >= maxRetries) {
+              setError("문서 처리 시간이 초과되었습니다. 페이지를 새로고침해주세요.");
+              setLoading(false);
+              stopPolling();
+            } else {
+              fetchExtractionData();
+            }
+          }, 2000); // 2초마다 재시도
+        }
+      } else if (err.response?.status === 404) {
+        // 데이터 없음
+        setError("추출된 데이터가 없습니다. 문서 처리를 시작해주세요.");
+        setLoading(false);
+        stopPolling();
+      } else {
+        // 기타 오류
+        setError(err.response?.data?.detail || "추출 데이터를 불러오는데 실패했습니다.");
+        setLoading(false);
+        stopPolling();
+      }
+    }
+  }, [documentId, stopPolling]);
+
+  useEffect(() => {
+    console.log('[Effect] Component mounted or documentId changed:', documentId);
+
+    // 이전 폴링 정리
+    stopPolling();
+
+    setLoading(true);
+    setError(null);
+    setData(null);
+    setEditData(null);
+    retryCountRef.current = 0;
+    setRetryCount(0);
+
+    // 약간의 딜레이 후 fetch (React Strict Mode 대응)
+    const timer = setTimeout(() => {
+      fetchExtractionData(); // eslint-disable-line react-hooks/exhaustive-deps
+    }, 100);
+
+    // 컴포넌트 언마운트 시 폴링 중지
+    return () => {
+      console.log('[Effect] Cleanup');
+      clearTimeout(timer);
+      stopPolling();
+    };
   }, [documentId]);
 
   const handleEdit = (section: "company" | "financial" | "loan") => {
@@ -90,6 +181,30 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
     setEditData({ ...editData, [field]: value });
   };
 
+  const handleRetryExtraction = async () => {
+    try {
+      setProcessing(true);
+      setError(null);
+      await extractionService.triggerExtraction(documentId);
+
+      // 처리 완료 후 데이터 다시 불러오기
+      setTimeout(async () => {
+        try {
+          const extractionData = await extractionService.getExtractionData(documentId);
+          setData(extractionData);
+          setEditData(extractionData);
+        } catch (err) {
+          setError("추출된 데이터를 불러오는데 실패했습니다.");
+        } finally {
+          setProcessing(false);
+        }
+      }, 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "재처리에 실패했습니다.");
+      setProcessing(false);
+    }
+  };
+
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return "N/A";
     return new Intl.NumberFormat("ko-KR", {
@@ -103,23 +218,79 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
     return new Intl.NumberFormat("ko-KR").format(num);
   };
 
+  // 로딩 중일 때는 항상 로딩 UI 표시 (data 유무와 관계없이)
   if (loading) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-        <div className="flex items-center justify-center space-x-3">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-          <span className="text-blue-800 font-medium">
-            Analyzing document... Please wait
-          </span>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-8">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+            <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">
+              문서 분석 중...
+            </h3>
+            <p className="text-blue-700 text-sm">
+              OCR 처리 및 데이터 추출을 진행하고 있습니다. 잠시만 기다려주세요.
+            </p>
+            <p className="text-blue-600 text-xs mt-2">
+              {retryCount > 0 && `재시도 중... (${retryCount}/${maxRetries})`}
+            </p>
+          </div>
+          <div className="w-full max-w-md bg-blue-100 rounded-full h-2 overflow-hidden">
+            <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+          </div>
+          <Button variant="outline" onClick={() => {
+            console.log('[DEBUG] Manual refresh triggered');
+            fetchExtractionData();
+          }}>
+            수동 새로고침 (디버그)
+          </Button>
         </div>
       </div>
     );
   }
 
-  if (error || !data || !editData) {
+  // 에러가 있거나 데이터가 없을 때만 에러 UI 표시
+  if (error && !data) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800">{error || "데이터를 불러올 수 없습니다."}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-red-800">{error}</p>
+          <Button
+            variant="outline"
+            onClick={handleRetryExtraction}
+            disabled={processing}
+          >
+            {processing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                처리 중...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                재처리
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 데이터가 없으면 에러 UI
+  if (!data || !editData) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+        <p className="text-yellow-800">데이터를 불러올 수 없습니다.</p>
       </div>
     );
   }

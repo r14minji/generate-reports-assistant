@@ -12,7 +12,9 @@ export const axiosInstance = axios.create({
     "Cache-Control": "no-cache",
   },
   validateStatus: (status) => {
-    return status >= 200 && status < 300; // 기본 성공 상태 코드 범위
+    // 200-299는 성공, 202는 처리중이므로 별도 처리 필요
+    // 하지만 에러로 던져야 catch 블록에서 처리 가능
+    return status >= 200 && status < 300;
   },
 });
 
