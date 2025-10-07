@@ -57,6 +57,7 @@ export default function AdditionalInfo() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [hasExistingData, setHasExistingData] = useState(false); // 저장된 데이터 존재 여부
 
   // 담보 정보 state
   const [collateralType, setCollateralType] = useState<
@@ -76,130 +77,78 @@ export default function AdditionalInfo() {
   });
 
   useEffect(() => {
-    const fetchSuggestions = async () => {
+    const fetchData = async () => {
       try {
-        // API 연동 - AI가 산업 분석 후 필요한 추가 정보 제안
-        const data = await additionalInfoService.getSuggestedFields(documentId);
+        // 1. AI가 산업 분석 후 필요한 추가 정보 제안
+        const suggestions =
+          await additionalInfoService.getSuggestedFields(documentId);
 
         setAdditionalInfo({
-          industry: data.industry,
-          aiReason: data.ai_reason,
-          industryOutlook: data.industry_outlook,
-          insights: data.insights,
-          suggestedFields: data.suggested_fields,
+          industry: suggestions.industry,
+          aiReason: suggestions.ai_reason,
+          industryOutlook: suggestions.industry_outlook,
+          insights: suggestions.insights,
+          suggestedFields: suggestions.suggested_fields,
         });
+
+        // 2. 저장된 추가 정보가 있으면 불러오기
+        try {
+          const savedData =
+            await additionalInfoService.getAdditionalInfo(documentId);
+
+          // 저장된 데이터가 있음을 표시
+          setHasExistingData(true);
+
+          // 저장된 field_data로 formData 복원
+          if (savedData.field_data) {
+            setFormData(savedData.field_data);
+          }
+
+          // 저장된 custom_fields 복원
+          if (savedData.custom_fields) {
+            setCustomFields({
+              special_considerations:
+                savedData.custom_fields.special_considerations || "",
+              management_evaluation:
+                savedData.custom_fields.management_evaluation || "",
+              other_notes: savedData.custom_fields.other_notes || "",
+            });
+          }
+
+          // 저장된 collateral_data 복원
+          if (savedData.collateral_data) {
+            setCollateralType(savedData.collateral_data.type);
+            setCollateralData({
+              type: savedData.collateral_data.type,
+              appraisalValue: savedData.collateral_data.appraisal_value || "",
+              auctionRate: savedData.collateral_data.auction_rate || "",
+              seniorLien: savedData.collateral_data.senior_lien || "",
+              coLienShare: savedData.collateral_data.co_lien_share || "",
+              ourAllocation: savedData.collateral_data.our_allocation || "",
+              recoveryExpected:
+                savedData.collateral_data.recovery_expected || "",
+              recoveryAmount: savedData.collateral_data.recovery_amount || "",
+              lossAmount: savedData.collateral_data.loss_amount || "",
+              lossOpinion: savedData.collateral_data.loss_opinion || "",
+            });
+          }
+        } catch (error: any) {
+          // 404 에러면 저장된 데이터가 없는 것이므로 무시
+          if (error.response?.status !== 404) {
+            console.error("Failed to load saved additional info:", error);
+          }
+          setHasExistingData(false);
+        }
+
         setIsLoading(false);
       } catch (error) {
         console.error("Failed to load suggestions:", error);
         setIsLoading(false);
-        // 에러 발생 시 null로 설정하여 에러 UI 표시
       }
     };
 
-    fetchSuggestions();
+    fetchData();
   }, [documentId]);
-
-  // 개발용 목업 데이터 (API 연동 후 삭제 가능)
-  /*
-  useEffect(() => {
-    setTimeout(() => {
-      const mockData: AdditionalInfoData = {
-        industry: "자동차 부품 제조업",
-        aiReason:
-          "자동차 부품 제조업의 경우, 생산 능력, 품질 관리 체계, 주요 거래처와의 계약 조건 등이 신용 평가에 중요한 요소입니다.",
-        industryOutlook:
-          "글로벌 자동차 산업은 전기차 전환과 자율주행 기술 발전으로 구조적 변화를 겪고 있습니다. 국내 자동차 부품 업계는 2024년 하반기부터 회복세를 보이고 있으며, 특히 전동화 부품 수요가 급증하고 있습니다. 정부의 그린뉴딜 정책과 친환경차 보조금 확대로 관련 부품 제조사들의 수혜가 예상됩니다.",
-        insights: [
-          {
-            title: "전기차 전환 가속화",
-            content:
-              "2024년 전기차 판매량이 전년 대비 35% 증가하며, 전동화 부품(배터리 팩, 모터, 인버터) 수요가 급증하고 있습니다. 기존 내연기관 부품 업체들의 사업 전환이 필수적입니다.",
-            type: "positive",
-          },
-          {
-            title: "공급망 다변화 트렌드",
-            content:
-              "글로벌 완성차 업체들이 중국 의존도를 낮추기 위해 한국 부품사로 공급망을 다변화하고 있어, 국내 부품사들의 수주 기회가 확대되고 있습니다.",
-            type: "positive",
-          },
-          {
-            title: "원자재 가격 변동성",
-            content:
-              "철강, 알루미늄, 구리 등 주요 원자재 가격이 지정학적 리스크로 인해 불안정한 상황입니다. 원가 관리 능력과 가격 전가력이 수익성에 큰 영향을 미칠 것으로 예상됩니다.",
-            type: "negative",
-          },
-          {
-            title: "디지털 전환 필수화",
-            content:
-              "스마트 팩토리 도입과 AI 기반 품질관리 시스템 구축이 경쟁력 확보의 핵심 요소로 부상하고 있습니다. 디지털 전환 투자가 중장기 경쟁력을 좌우할 전망입니다.",
-            type: "neutral",
-          },
-        ],
-        suggestedFields: [
-          {
-            id: "production_capacity",
-            label: "연간 생산 능력",
-            description: "생산 규모를 파악하기 위한 정보",
-            type: "number",
-            required: true,
-            placeholder: "예: 100000 (단위: 개)",
-          },
-          {
-            id: "quality_certifications",
-            label: "품질 인증 현황",
-            description: "ISO, IATF 등 품질 관련 인증서",
-            type: "textarea",
-            required: true,
-            placeholder: "예: ISO 9001:2015, IATF 16949:2016",
-          },
-          {
-            id: "major_clients",
-            label: "주요 거래처 목록",
-            description: "상위 5개 거래처와 매출 비중",
-            type: "textarea",
-            required: true,
-            placeholder: "예: 현대자동차 (45%), 기아자동차 (30%), ...",
-          },
-          {
-            id: "contract_period",
-            label: "주요 거래처 계약 기간",
-            description: "장기 공급 계약 여부 및 기간",
-            type: "text",
-            required: false,
-            placeholder: "예: 3년 장기 공급 계약 (2024.01 ~ 2027.01)",
-          },
-          {
-            id: "equipment_investment",
-            label: "최근 3년 설비 투자 규모",
-            description: "생산 설비 현대화 및 확장 투자",
-            type: "number",
-            required: false,
-            placeholder: "예: 500000000 (단위: 원)",
-          },
-          {
-            id: "rd_investment",
-            label: "연구개발 투자 비중",
-            description: "매출 대비 R&D 투자 비율",
-            type: "number",
-            required: false,
-            placeholder: "예: 5 (단위: %)",
-          },
-          {
-            id: "inventory_turnover",
-            label: "재고 회전율",
-            description: "재고 관리 효율성 지표",
-            type: "number",
-            required: false,
-            placeholder: "예: 8.5 (회/년)",
-          },
-        ],
-      };
-
-      setAdditionalInfo(mockData);
-      setIsLoading(false);
-    }, 1500);
-  }, [documentId]);
-  */
 
   const handleInputChange = (fieldId: string, value: string) => {
     setFormData((prev) => ({
@@ -274,22 +223,32 @@ export default function AdditionalInfo() {
         loss_opinion: collateralData.lossOpinion,
       };
 
-      // API 연동 - 추가 정보 저장 (AI 제안 필드 + 사용자 커스텀 필드 + 담보 정보)
-      await additionalInfoService.saveAdditionalInfo(
-        documentId,
-        formData,
-        customFields,
-        collateralDataForBackend
-      );
-
-      console.log("Additional info saved successfully");
+      // API 연동 - 저장된 데이터가 있으면 PUT, 없으면 POST
+      if (hasExistingData) {
+        await additionalInfoService.updateAdditionalInfo(
+          documentId,
+          formData,
+          customFields,
+          collateralDataForBackend
+        );
+        console.log("Additional info updated successfully");
+      } else {
+        await additionalInfoService.saveAdditionalInfo(
+          documentId,
+          formData,
+          customFields,
+          collateralDataForBackend
+        );
+        console.log("Additional info saved successfully");
+      }
 
       // Analysis 페이지로 이동 (documentId 전달)
       navigate(`/corporate-loan/analysis?documentId=${documentId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save additional info:", error);
-      // TODO: 에러 처리 UI 추가 (토스트 메시지 등)
-      alert("추가 정보 저장에 실패했습니다. 다시 시도해주세요.");
+      const errorMessage =
+        error.response?.data?.detail || error.message || "알 수 없는 오류";
+      alert(`추가 정보 저장에 실패했습니다.\n${errorMessage}`);
     }
   };
 
