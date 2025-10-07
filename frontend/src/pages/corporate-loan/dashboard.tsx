@@ -1,66 +1,115 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button";
 import Layout from "../../components/common/Layout";
-import DashboardStats from "../../components/dashboard/DashboardStats";
-import RecentAnalysisList from "../../components/dashboard/RecentAnalysisList";
+import { dashboardService, CompletedReport } from "../../services/dashboard";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [reports, setReports] = useState<CompletedReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const data = await dashboardService.getCompletedReports();
+        setReports(data);
+      } catch (error) {
+        console.error("리포트 목록 조회 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, []);
 
   const handleStartAnalysis = () => {
     navigate("/corporate-loan/upload");
   };
 
+  const handleReportClick = (documentId: number) => {
+    navigate(`/corporate-loan/report?documentId=${documentId}`);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
   return (
-    <Layout title="Dashboard" subtitle="Overview of loan analysis activities">
-      <DashboardStats />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <RecentAnalysisList limit={5} />
-
-        {/* System Status */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              System Status
-            </h3>
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-4 h-4 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">AI Analysis Engine</span>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Online
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Document Processing</span>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Active
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Risk Assessment</span>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Ready
-              </span>
-            </div>
-          </div>
+    <Layout title="Dashboard" subtitle="완료된 리포트 목록">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">완료된 리포트</h3>
         </div>
+
+        {isLoading ? (
+          <div className="p-6 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-sm text-gray-600">로딩 중...</p>
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-gray-600">완료된 리포트가 없습니다.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    회사명
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    산업
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    파일명
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    업로드 일자
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    상태
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {reports.map((report) => (
+                  <tr
+                    key={report.id}
+                    onClick={() => handleReportClick(report.id)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {report.company_name || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {report.industry || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {report.filename}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {formatDate(report.upload_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        완료
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
@@ -82,23 +131,7 @@ export default function Dashboard() {
               d="M12 6v6m0 0v6m0-6h6m-6 0H6"
             />
           </svg>
-          New Analysis
-        </Button>
-        <Button variant="outline" size="lg" className="flex-1 sm:flex-none">
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
-          Analysis History
+          새 분석 시작
         </Button>
       </div>
     </Layout>

@@ -148,4 +148,12 @@ export const documentsService = {
       `/api/documents/${documentId}/risk-analysis`
     );
   },
+
+  // 리포트 완료 처리
+  completeReport: async (documentId: number): Promise<{ status: string; message: string }> => {
+    return httpClient.post<{ status: string; message: string }>(
+      `/api/documents/${documentId}/complete`,
+      {}
+    );
+  },
 };

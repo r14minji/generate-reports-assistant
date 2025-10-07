@@ -297,12 +297,18 @@ def get_report(
     document_id: int,
     db: Session = Depends(get_db)
 ):
-    """문서의 리포트 데이터를 조회합니다. DB의 실제 데이터를 기반으로 LLM이 최종 리포트를 생성합니다."""
+    """문서의 리포트 데이터를 조회합니다. 저장된 리포트가 있으면 반환하고, 없으면 LLM이 생성합니다."""
     document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
+    # 저장된 리포트 데이터가 있으면 반환
+    if document.report_data:
+        report_data = ReportData(**document.report_data)
+        return ReportResponse(data=report_data, review_opinion=document.review_opinion)
+
+    # 저장된 리포트가 없으면 새로 생성
     # 추출 데이터 조회
     extraction = db.query(DocumentExtraction).filter(
         DocumentExtraction.document_id == document_id
@@ -474,7 +480,24 @@ def update_report(
     db.commit()
     db.refresh(document)
 
-    return ReportResponse(data=document.report_data)
+    return ReportResponse(data=document.report_data, review_opinion=document.review_opinion)
+
+@router.post("/{document_id}/complete")
+def complete_report(
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """리포트를 완료 상태로 저장합니다."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    document.status = "completed"
+    db.commit()
+    db.refresh(document)
+
+    return {"status": "success", "message": "리포트가 저장되었습니다."}
 
 @router.get("/{document_id}/risk-analysis", response_model=RiskAnalysisResponse)
 def get_risk_analysis(

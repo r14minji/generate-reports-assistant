@@ -17,6 +17,15 @@ export interface RecentAnalysisItem {
   created_at: string;
 }
 
+export interface CompletedReport {
+  id: number;
+  filename: string;
+  company_name: string | null;
+  industry: string | null;
+  upload_date: string | null;
+  status: string;
+}
+
 export const dashboardService = {
   // 대시보드 통계 조회
   getStats: async (): Promise<DashboardStats> => {
@@ -26,5 +35,10 @@ export const dashboardService = {
   // 최근 분석 목록 조회
   getRecentAnalysis: async (limit: number = 10): Promise<RecentAnalysisItem[]> => {
     return httpClient.get<RecentAnalysisItem[]>(`/api/dashboard/recent-analysis?limit=${limit}`);
+  },
+
+  // 완료된 리포트 목록 조회
+  getCompletedReports: async (): Promise<CompletedReport[]> => {
+    return httpClient.get<CompletedReport[]>("/api/dashboard/completed-reports");
   },
 };
