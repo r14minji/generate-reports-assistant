@@ -12,8 +12,9 @@ export const axiosInstance = axios.create({
     "Cache-Control": "no-cache",
   },
   validateStatus: (status) => {
-    // 200-299는 성공, 202는 처리중이므로 별도 처리 필요
-    // 하지만 에러로 던져야 catch 블록에서 처리 가능
+    // 200-299는 성공으로 처리
+    // 202는 처리중 상태로 에러로 던져서 폴링하도록 함
+    // 404, 422 등도 에러로 처리
     return status >= 200 && status < 300;
   },
 });

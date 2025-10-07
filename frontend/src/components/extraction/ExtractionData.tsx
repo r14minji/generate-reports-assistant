@@ -45,17 +45,17 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
         status: 'loaded'
       });
 
-      // 상태 업데이트를 배치로 처리
-      setLoading(false);
-      setError(null);
+      // 성공하면 폴링 중지 (상태 업데이트 전에)
+      stopPolling();
+
+      // 상태 업데이트를 한 번에 처리하여 리렌더링 최소화
       setData(extractionData);
       setEditData(extractionData);
+      setLoading(false);
+      setError(null);
 
       console.log('[Fetch] State updated - loading: false, data set');
       console.log('[Fetch] Current data:', extractionData);
-
-      // 성공하면 폴링 중지
-      stopPolling();
     } catch (err: any) {
       console.error('[Fetch] ❌ Error:', {
         status: err.response?.status,
@@ -119,7 +119,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
 
     // 약간의 딜레이 후 fetch (React Strict Mode 대응)
     const timer = setTimeout(() => {
-      fetchExtractionData(); // eslint-disable-line react-hooks/exhaustive-deps
+      fetchExtractionData();
     }, 100);
 
     // 컴포넌트 언마운트 시 폴링 중지
@@ -128,7 +128,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
       clearTimeout(timer);
       stopPolling();
     };
-  }, [documentId]);
+  }, [documentId, fetchExtractionData, stopPolling]);
 
   const handleEdit = (section: "company" | "financial" | "loan") => {
     setEditMode({ ...editMode, [section]: true });
@@ -218,8 +218,8 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
     return new Intl.NumberFormat("ko-KR").format(num);
   };
 
-  // 로딩 중일 때는 항상 로딩 UI 표시 (data 유무와 관계없이)
-  if (loading) {
+  // 로딩 중이고 데이터가 없을 때만 로딩 UI 표시
+  if (loading && !data) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-8">
         <div className="flex flex-col items-center justify-center space-y-4">
