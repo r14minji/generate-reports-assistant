@@ -90,6 +90,11 @@ export interface RiskAnalysisResponse {
 }
 
 export const documentsService = {
+  // 문서 목록 조회
+  getDocuments: async (): Promise<DocumentUploadResponse[]> => {
+    return httpClient.get<DocumentUploadResponse[]>("/api/documents");
+  },
+
   // 파일 업로드
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
     const formData = new FormData();

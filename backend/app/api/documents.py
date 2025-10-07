@@ -62,6 +62,23 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 OCR_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".gif"}
 
 
+@router.get("", response_model=list[DocumentUploadResponse])
+def get_documents(db: Session = Depends(get_db)):
+    """모든 문서 목록을 조회합니다."""
+    documents = db.query(Document).order_by(Document.upload_date.desc()).all()
+    return [
+        DocumentUploadResponse(
+            id=doc.id,
+            filename=doc.filename,
+            filepath=doc.filepath,
+            file_size=doc.file_size,
+            upload_date=doc.upload_date,
+            status=doc.status
+        )
+        for doc in documents
+    ]
+
+
 def process_document_background(document_id: int):
     """백그라운드에서 문서를 처리합니다."""
     db = SessionLocal()

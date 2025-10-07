@@ -89,7 +89,11 @@ def trigger_extraction(document_id: int, db: Session = Depends(get_db)):
     ).first()
 
     if existing:
-        return {"message": "이미 추출된 데이터가 있습니다.", "extraction_id": existing.id}
+        return {
+            "message": "이미 추출된 데이터가 있습니다.",
+            "extraction_id": existing.id,
+            "document_id": document_id
+        }
 
     try:
         # ExtractionService를 사용하여 문서 처리
@@ -102,6 +106,12 @@ def trigger_extraction(document_id: int, db: Session = Depends(get_db)):
             "extraction_id": extraction.id
         }
     except ValueError as e:
+        # 문서 상태를 실패로 변경
+        document.status = "failed"
+        db.commit()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # 문서 상태를 실패로 변경
+        document.status = "failed"
+        db.commit()
         raise HTTPException(status_code=500, detail=f"추출 실패: {str(e)}")
