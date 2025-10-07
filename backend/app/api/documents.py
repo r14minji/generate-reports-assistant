@@ -9,7 +9,7 @@ import google.generativeai as genai
 import json
 
 from app.core.database import get_db, SessionLocal
-from app.models.document import Document, AdditionalInfo
+from app.models.document import Document, AdditionalInfo, DocumentExtraction
 from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse
 from app.services.extraction_service import ExtractionService
 
@@ -21,6 +21,35 @@ class ReviewOpinionRequest(BaseModel):
 
 class ReviewOpinionResponse(BaseModel):
     review_opinion: str | None
+
+# 위험분석 스키마
+class IndustryClassification(BaseModel):
+    code: str
+    name: str
+    confidence: float
+    reasons: list[str]
+    alternatives: list[dict[str, str]]
+
+class RiskFactor(BaseModel):
+    level: str  # high, medium, low
+    title: str
+    description: str
+    metrics: list[str]
+    recommendation: str | None = None
+
+class FinancialRatio(BaseModel):
+    name: str
+    value: float
+    industry_average: float
+    status: str  # good, warning, danger
+    percentage: float
+
+class RiskAnalysisResponse(BaseModel):
+    industry_classification: IndustryClassification
+    risk_factors: list[RiskFactor]
+    financial_ratios: list[FinancialRatio]
+    overall_grade: str
+    improvement_plan: str
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -249,3 +278,151 @@ def update_report(
     db.refresh(document)
 
     return ReportResponse(data=document.report_data)
+
+@router.get("/{document_id}/risk-analysis", response_model=RiskAnalysisResponse)
+def get_risk_analysis(
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """문서의 위험 분석을 수행합니다. DB에 저장된 extraction과 additional_info를 기반으로 LLM이 분석합니다."""
+
+    # 문서 확인
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+    # 추출된 데이터 확인
+    extraction = db.query(DocumentExtraction).filter(
+        DocumentExtraction.document_id == document_id
+    ).first()
+
+    if not extraction:
+        raise HTTPException(status_code=404, detail="추출된 데이터를 찾을 수 없습니다.")
+
+    # 추가 정보 (선택적)
+    additional_info = db.query(AdditionalInfo).filter(
+        AdditionalInfo.document_id == document_id
+    ).first()
+
+    # LLM을 사용하여 위험 분석 수행
+    try:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        # 컨텍스트 구성
+        context = f"""
+당신은 금융 대출 심사 전문가입니다. 다음 정보를 바탕으로 위험 분석을 수행해주세요.
+
+【기업 기본 정보】
+- 회사명: {extraction.company_name or "N/A"}
+- 사업자번호: {extraction.business_number or "N/A"}
+- 대표자: {extraction.ceo_name or "N/A"}
+- 설립일: {extraction.establishment_date or "N/A"}
+- 산업: {extraction.industry or "N/A"}
+- 주소: {extraction.address or "N/A"}
+
+【재무 정보】
+- 매출: {extraction.revenue or "N/A"}
+- 영업이익: {extraction.operating_profit or "N/A"}
+- 순이익: {extraction.net_profit or "N/A"}
+- 총자산: {extraction.total_assets or "N/A"}
+- 총부채: {extraction.total_liabilities or "N/A"}
+- 자본: {extraction.equity or "N/A"}
+
+【기타 정보】
+- 직원 수: {extraction.employee_count or "N/A"}
+- 주요 제품: {extraction.main_products or "N/A"}
+- 대출 목적: {extraction.loan_purpose or "N/A"}
+- 대출 금액: {extraction.loan_amount or "N/A"}
+"""
+
+        if additional_info:
+            context += f"""
+【추가 정보】
+- AI 제안 필드: {json.dumps(additional_info.field_data or {}, ensure_ascii=False)}
+- 사용자 입력: {json.dumps(additional_info.custom_fields or {}, ensure_ascii=False)}
+- 담보 정보: {json.dumps(additional_info.collateral_data or {}, ensure_ascii=False)}
+"""
+
+        context += """
+다음 형식의 JSON으로 응답해주세요:
+
+{
+  "industry_classification": {
+    "code": "산업 코드 (예: A01)",
+    "name": "산업명",
+    "confidence": 0.95,
+    "reasons": [
+      "분류 근거 1",
+      "분류 근거 2",
+      "분류 근거 3"
+    ],
+    "alternatives": [
+      {"code": "A02", "name": "대체 산업명 1"},
+      {"code": "B01", "name": "대체 산업명 2"}
+    ]
+  },
+  "risk_factors": [
+    {
+      "level": "high",
+      "title": "위험 요인 제목",
+      "description": "위험 요인 설명",
+      "metrics": ["구체적 지표 1", "구체적 지표 2"],
+      "recommendation": "개선 권장사항"
+    }
+  ],
+  "financial_ratios": [
+    {
+      "name": "부채비율",
+      "value": 145.0,
+      "industry_average": 120.0,
+      "status": "warning",
+      "percentage": 72.0
+    }
+  ],
+  "overall_grade": "B등급 (5등급 중 2등급)",
+  "improvement_plan": "개선 계획 설명"
+}
+
+위험 요인은 high(고위험), medium(중위험), low(저위험)로 구분하고, 각각 최소 1개씩 포함해주세요.
+재무 비율은 최소 2개 이상 분석해주세요.
+status는 good(양호), warning(주의), danger(위험) 중 하나입니다.
+반드시 유효한 JSON 형식으로만 응답하세요.
+"""
+
+        response = model.generate_content(
+            context,
+            generation_config=genai.GenerationConfig(
+                temperature=0.3,
+            )
+        )
+
+        result = response.text.strip()
+
+        # JSON 코드 블록 제거
+        if result.startswith("```json"):
+            result = result[7:]
+        elif result.startswith("```"):
+            result = result[3:]
+        if result.endswith("```"):
+            result = result[:-3]
+        result = result.strip()
+
+        llm_response = json.loads(result)
+
+        # Pydantic 모델로 변환
+        industry_classification = IndustryClassification(**llm_response["industry_classification"])
+        risk_factors = [RiskFactor(**factor) for factor in llm_response["risk_factors"]]
+        financial_ratios = [FinancialRatio(**ratio) for ratio in llm_response["financial_ratios"]]
+
+        return RiskAnalysisResponse(
+            industry_classification=industry_classification,
+            risk_factors=risk_factors,
+            financial_ratios=financial_ratios,
+            overall_grade=llm_response["overall_grade"],
+            improvement_plan=llm_response["improvement_plan"]
+        )
+
+    except Exception as e:
+        print(f"[LLM] 위험 분석 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"위험 분석에 실패했습니다: {str(e)}")

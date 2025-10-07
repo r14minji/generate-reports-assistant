@@ -4,7 +4,7 @@ import Button from "../../components/common/Button";
 import Layout from "../../components/common/Layout";
 import FileAttachment from "../../components/risk-analysis/FileAttachment";
 import ReviewOpinion from "../../components/risk-analysis/ReviewOpinion";
-import { documentsService } from "../../services/documents";
+import { documentsService, RiskAnalysisResponse } from "../../services/documents";
 
 export default function Analysis() {
   const navigate = useNavigate();
@@ -15,13 +15,25 @@ export default function Analysis() {
   const [reviewOpinion, setReviewOpinion] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [analysisData, setAnalysisData] = useState<RiskAnalysisResponse | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsProcessing(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchRiskAnalysis = async () => {
+      try {
+        setIsProcessing(true);
+        const data = await documentsService.getRiskAnalysis(documentId);
+        setAnalysisData(data);
+      } catch (error: any) {
+        console.error("위험분석 조회 실패:", error);
+        const errorMessage = error.response?.data?.detail || error.message || "알 수 없는 오류";
+        alert(`위험분석 조회에 실패했습니다.\n${errorMessage}`);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    fetchRiskAnalysis();
+  }, [documentId]);
 
   const handleBack = () => {
     navigate(`/corporate-loan/additional-info?documentId=${documentId}`);
@@ -52,7 +64,7 @@ export default function Analysis() {
             </span>
           </div>
         </div>
-      ) : (
+      ) : analysisData ? (
         <div className="space-y-8">
           {/* Industry Classification */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -62,10 +74,12 @@ export default function Analysis() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <h4 className="text-base font-medium text-gray-900 mb-2">
-                A01 - 자동차 부품 제조업
+                {analysisData.industry_classification.code} - {analysisData.industry_classification.name}
               </h4>
               <p className="text-sm text-gray-600 mb-3">
-                <strong>신뢰도:</strong> 95% (매우 높음)
+                <strong>신뢰도:</strong> {Math.round(analysisData.industry_classification.confidence * 100)}%
+                {analysisData.industry_classification.confidence >= 0.8 ? " (매우 높음)" :
+                 analysisData.industry_classification.confidence >= 0.6 ? " (높음)" : " (보통)"}
               </p>
 
               <div className="mt-3">
@@ -73,15 +87,11 @@ export default function Analysis() {
                   분류 근거:
                 </strong>
                 <ul className="mt-2 ml-4 space-y-1">
-                  <li className="text-sm text-gray-600">
-                    • 주요 제품: 엔진 부품, 전기 부품
-                  </li>
-                  <li className="text-sm text-gray-600">
-                    • 고객사: 현대자동차, 기아자동차
-                  </li>
-                  <li className="text-sm text-gray-600">
-                    • 사업 영역: B2B 부품 공급
-                  </li>
+                  {analysisData.industry_classification.reasons.map((reason, idx) => (
+                    <li key={idx} className="text-sm text-gray-600">
+                      • {reason}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -91,29 +101,17 @@ export default function Analysis() {
                 대체 분류:
               </strong>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  {
-                    code: "A01",
-                    name: "자동차 부품 제조",
-                    selected: true,
-                  },
-                  { code: "A02", name: "식품 제조", selected: false },
-                  {
-                    code: "B01",
-                    name: "전자제품 도매",
-                    selected: false,
-                  },
-                  { code: "C01", name: "IT 서비스", selected: false },
-                ].map((industry) => (
+                <div className="p-3 border rounded-lg bg-blue-600 text-white border-blue-600">
+                  <div className="text-sm font-medium">
+                    {analysisData.industry_classification.name}
+                  </div>
+                </div>
+                {analysisData.industry_classification.alternatives.map((alt) => (
                   <div
-                    key={industry.code}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      industry.selected
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                    }`}
+                    key={alt.code}
+                    className="p-3 border rounded-lg bg-white text-gray-700 border-gray-300 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <div className="text-sm font-medium">{industry.name}</div>
+                    <div className="text-sm font-medium">{alt.name}</div>
                   </div>
                 ))}
               </div>
@@ -127,57 +125,68 @@ export default function Analysis() {
             </h3>
 
             <div className="space-y-4">
-              {/* High Risk */}
-              <div className="border-l-4 border-red-500 bg-red-50 p-4 rounded-r-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    고위험
-                  </span>
-                  <h4 className="font-medium text-red-900">
-                    고객 집중도 위험
-                  </h4>
-                </div>
-                <div className="text-sm text-red-800">
-                  <p>현대그룹 매출 의존도: 87%</p>
-                  <p>산업 위험 임계값 80% 초과</p>
-                  <p className="mt-2">
-                    <strong>권장사항:</strong> 고객 다변화 계획 필요
-                  </p>
-                </div>
-              </div>
+              {analysisData.risk_factors.map((factor, idx) => {
+                const levelConfig = {
+                  high: {
+                    label: "고위험",
+                    borderColor: "border-red-500",
+                    bgColor: "bg-red-50",
+                    textColor: "text-red-800",
+                    badgeBg: "bg-red-100",
+                    badgeText: "text-red-800",
+                    titleColor: "text-red-900",
+                  },
+                  medium: {
+                    label: "중위험",
+                    borderColor: "border-yellow-500",
+                    bgColor: "bg-yellow-50",
+                    textColor: "text-yellow-800",
+                    badgeBg: "bg-yellow-100",
+                    badgeText: "text-yellow-800",
+                    titleColor: "text-yellow-900",
+                  },
+                  low: {
+                    label: "저위험",
+                    borderColor: "border-green-500",
+                    bgColor: "bg-green-50",
+                    textColor: "text-green-800",
+                    badgeBg: "bg-green-100",
+                    badgeText: "text-green-800",
+                    titleColor: "text-green-900",
+                  },
+                };
 
-              {/* Medium Risk */}
-              <div className="border-l-4 border-yellow-500 bg-yellow-50 p-4 rounded-r-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    중위험
-                  </span>
-                  <h4 className="font-medium text-yellow-900">
-                    원자재 가격 변동성
-                  </h4>
-                </div>
-                <div className="text-sm text-yellow-800">
-                  <p>철강 원자재 의존도: 60%</p>
-                  <p>
-                    <strong>권장사항:</strong> 헤징 전략 검증 필요
-                  </p>
-                </div>
-              </div>
+                const config = levelConfig[factor.level];
 
-              {/* Low Risk */}
-              <div className="border-l-4 border-green-500 bg-green-50 p-4 rounded-r-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    저위험
-                  </span>
-                  <h4 className="font-medium text-green-900">
-                    기술 및 품질 관리
-                  </h4>
-                </div>
-                <div className="text-sm text-green-800">
-                  <p>ISO 9001 인증, 낮은 품질 클레임</p>
-                </div>
-              </div>
+                return (
+                  <div
+                    key={idx}
+                    className={`border-l-4 ${config.borderColor} ${config.bgColor} p-4 rounded-r-lg`}
+                  >
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badgeBg} ${config.badgeText}`}
+                      >
+                        {config.label}
+                      </span>
+                      <h4 className={`font-medium ${config.titleColor}`}>
+                        {factor.title}
+                      </h4>
+                    </div>
+                    <div className={`text-sm ${config.textColor}`}>
+                      <p>{factor.description}</p>
+                      {factor.metrics.map((metric, mIdx) => (
+                        <p key={mIdx}>{metric}</p>
+                      ))}
+                      {factor.recommendation && (
+                        <p className="mt-2">
+                          <strong>권장사항:</strong> {factor.recommendation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -188,39 +197,54 @@ export default function Analysis() {
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-900">
-                  부채비율: 145% vs 산업평균 120%
-                </span>
-                <div className="flex items-center space-x-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-yellow-500 h-2 rounded-full"
-                      style={{ width: "72%" }}
-                    ></div>
-                  </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    주의
-                  </span>
-                </div>
-              </div>
+              {analysisData.financial_ratios.map((ratio, idx) => {
+                const statusConfig = {
+                  good: {
+                    label: "양호",
+                    color: "bg-green-500",
+                    badgeBg: "bg-green-100",
+                    badgeText: "text-green-800",
+                  },
+                  warning: {
+                    label: "주의",
+                    color: "bg-yellow-500",
+                    badgeBg: "bg-yellow-100",
+                    badgeText: "text-yellow-800",
+                  },
+                  danger: {
+                    label: "위험",
+                    color: "bg-red-500",
+                    badgeBg: "bg-red-100",
+                    badgeText: "text-red-800",
+                  },
+                };
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-900">
-                  유동비율: 135% vs 산업평균 130%
-                </span>
-                <div className="flex items-center space-x-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: "68%" }}
-                    ></div>
+                const config = statusConfig[ratio.status];
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
+                    <span className="text-sm font-medium text-gray-900">
+                      {ratio.name}: {ratio.value}% vs 산업평균 {ratio.industry_average}%
+                    </span>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`${config.color} h-2 rounded-full`}
+                          style={{ width: `${ratio.percentage}%` }}
+                        ></div>
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badgeBg} ${config.badgeText}`}
+                      >
+                        {config.label}
+                      </span>
+                    </div>
                   </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    양호
-                  </span>
-                </div>
-              </div>
+                );
+              })}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
@@ -239,10 +263,10 @@ export default function Analysis() {
                   </svg>
                   <div>
                     <p className="text-sm font-medium text-blue-900">
-                      종합 평가: B등급 (5등급 중 2등급)
+                      종합 평가: {analysisData.overall_grade}
                     </p>
                     <p className="text-sm text-blue-800 mt-1">
-                      개선 계획: 수익성 개선 방안 검토 필요
+                      개선 계획: {analysisData.improvement_plan}
                     </p>
                   </div>
                 </div>
@@ -258,6 +282,10 @@ export default function Analysis() {
             files={attachedFiles}
             onFilesChange={setAttachedFiles}
           />
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <p className="text-yellow-800">분석 데이터를 불러오지 못했습니다.</p>
         </div>
       )}
 

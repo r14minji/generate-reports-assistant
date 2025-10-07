@@ -55,6 +55,39 @@ export interface ReportResponse {
   data: ReportData;
 }
 
+// 위험분석 인터페이스
+export interface IndustryClassification {
+  code: string;
+  name: string;
+  confidence: number;
+  reasons: string[];
+  alternatives: { code: string; name: string }[];
+}
+
+export interface RiskFactor {
+  level: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  metrics: string[];
+  recommendation?: string;
+}
+
+export interface FinancialRatio {
+  name: string;
+  value: number;
+  industry_average: number;
+  status: "good" | "warning" | "danger";
+  percentage: number;
+}
+
+export interface RiskAnalysisResponse {
+  industry_classification: IndustryClassification;
+  risk_factors: RiskFactor[];
+  financial_ratios: FinancialRatio[];
+  overall_grade: string;
+  improvement_plan: string;
+}
+
 export const documentsService = {
   // 파일 업로드
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
@@ -111,6 +144,15 @@ export const documentsService = {
     return httpClient.post<ReportResponse>(
       `/api/documents/${documentId}/report`,
       { data }
+    );
+  },
+
+  // 위험분석 조회
+  getRiskAnalysis: async (
+    documentId: number
+  ): Promise<RiskAnalysisResponse> => {
+    return httpClient.get<RiskAnalysisResponse>(
+      `/api/documents/${documentId}/risk-analysis`
     );
   },
 };
