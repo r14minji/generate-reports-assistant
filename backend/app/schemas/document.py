@@ -62,3 +62,4 @@ class ReportRequest(BaseModel):
 
 class ReportResponse(BaseModel):
     data: ReportData
+    review_opinion: str | None = None

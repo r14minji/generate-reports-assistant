@@ -10,6 +10,7 @@ export default function GenerateReport() {
   const [editData, setEditData] = useState<ReportData | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
   const [reviewOpinion, setReviewOpinion] = useState<string>("");
+  const [editReviewOpinion, setEditReviewOpinion] = useState<string>("");
   const [editMode, setEditMode] = useState({
     summary: false,
     company: false,
@@ -17,33 +18,45 @@ export default function GenerateReport() {
     risk: false,
     loan: false,
     additional: false,
+    review: false,
   });
 
   const handleEdit = (
-    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional"
+    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional" | "review"
   ) => {
+    if (section === "review") {
+      setEditReviewOpinion(reviewOpinion);
+    }
     setEditMode({ ...editMode, [section]: true });
   };
 
   const handleCancel = (
-    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional"
+    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional" | "review"
   ) => {
     setEditData(data);
+    setEditReviewOpinion(reviewOpinion);
     setEditMode({ ...editMode, [section]: false });
   };
 
   const handleSave = async (
-    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional"
+    section: "summary" | "company" | "financial" | "risk" | "loan" | "additional" | "review"
   ) => {
-    if (!editData) return;
+    if (!editData && section !== "review") return;
 
     try {
-      await documentsService.updateReport(documentId, editData);
-      setData(editData);
+      if (section === "review") {
+        // 심사 의견 저장
+        await documentsService.updateReviewOpinion(documentId, editReviewOpinion);
+        setReviewOpinion(editReviewOpinion);
+      } else {
+        // 리포트 데이터 저장
+        await documentsService.updateReport(documentId, editData!);
+        setData(editData);
+      }
       setEditMode({ ...editMode, [section]: false });
     } catch (error) {
-      console.error("리포트 저장 실패:", error);
-      alert("리포트 저장에 실패했습니다.");
+      console.error("저장 실패:", error);
+      alert("저장에 실패했습니다.");
     }
   };
 
@@ -57,14 +70,11 @@ export default function GenerateReport() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [reportResponse, reviewResponse] = await Promise.all([
-          documentsService.getReport(documentId),
-          documentsService.getReviewOpinion(documentId),
-        ]);
+        const reportResponse = await documentsService.getReport(documentId);
 
         setData(reportResponse.data);
         setEditData(reportResponse.data);
-        setReviewOpinion(reviewResponse.review_opinion || "");
+        setReviewOpinion(reportResponse.review_opinion || "");
       } catch (error) {
         console.error("데이터 조회 실패:", error);
         // API가 없을 경우 mock 데이터 사용
@@ -1076,12 +1086,61 @@ export default function GenerateReport() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   심사 의견
                 </h3>
+                {editMode.review ? (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCancel("review")}
+                    >
+                      취소
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSave("review")}
+                    >
+                      저장
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit("review")}
+                  >
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    편집
+                  </Button>
+                )}
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                  {reviewOpinion || "심사 의견이 입력되지 않았습니다."}
-                </p>
-              </div>
+              {editMode.review ? (
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-4 text-sm text-gray-600 leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={8}
+                  value={editReviewOpinion}
+                  onChange={(e) => setEditReviewOpinion(e.target.value)}
+                  placeholder="심사 의견을 입력하세요"
+                />
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                    {reviewOpinion || "심사 의견이 입력되지 않았습니다."}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

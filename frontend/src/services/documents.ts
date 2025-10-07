@@ -53,6 +53,7 @@ export interface ReportData {
 
 export interface ReportResponse {
   data: ReportData;
+  review_opinion: string | null;
 }
 
 // 위험분석 인터페이스
@@ -120,14 +121,6 @@ export const documentsService = {
     );
   },
 
-  // 심사 의견 조회
-  getReviewOpinion: async (
-    documentId: number
-  ): Promise<ReviewOpinionResponse> => {
-    return httpClient.get<ReviewOpinionResponse>(
-      `/api/documents/${documentId}/review-opinion`
-    );
-  },
 
   // 리포트 데이터 조회
   getReport: async (documentId: number): Promise<ReportResponse> => {

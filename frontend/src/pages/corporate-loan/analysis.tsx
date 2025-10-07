@@ -18,11 +18,12 @@ export default function Analysis() {
   const [analysisData, setAnalysisData] = useState<RiskAnalysisResponse | null>(null);
 
   useEffect(() => {
-    const fetchRiskAnalysis = async () => {
+    const fetchData = async () => {
+      setIsProcessing(true);
       try {
-        setIsProcessing(true);
-        const data = await documentsService.getRiskAnalysis(documentId);
-        setAnalysisData(data);
+        // 위험 분석 조회
+        const riskData = await documentsService.getRiskAnalysis(documentId);
+        setAnalysisData(riskData);
       } catch (error: any) {
         console.error("위험분석 조회 실패:", error);
         const errorMessage = error.response?.data?.detail || error.message || "알 수 없는 오류";
@@ -32,7 +33,7 @@ export default function Analysis() {
       }
     };
 
-    fetchRiskAnalysis();
+    fetchData();
   }, [documentId]);
 
   const handleBack = () => {

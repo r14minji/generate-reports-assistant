@@ -10,7 +10,7 @@ import json
 
 from app.core.database import get_db, SessionLocal
 from app.models.document import Document, AdditionalInfo, DocumentExtraction
-from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse
+from app.schemas.document import DocumentUploadResponse, ReportRequest, ReportResponse, ReportData
 from app.services.extraction_service import ExtractionService
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -166,19 +166,6 @@ def update_review_opinion(
 
     return ReviewOpinionResponse(review_opinion=document.review_opinion)
 
-@router.get("/{document_id}/review-opinion", response_model=ReviewOpinionResponse)
-def get_review_opinion(
-    document_id: int,
-    db: Session = Depends(get_db)
-):
-    """문서의 심사 의견을 조회합니다."""
-    document = db.query(Document).filter(Document.id == document_id).first()
-
-    if not document:
-        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
-
-    return ReviewOpinionResponse(review_opinion=document.review_opinion)
-
 def generate_additional_information(additional_info_data: dict) -> str:
     """추가 정보를 기반으로 LLM이 인사이트를 생성합니다."""
     try:
@@ -227,39 +214,249 @@ def generate_additional_information(additional_info_data: dict) -> str:
         print(f"[LLM] 추가 정보 생성 실패: {str(e)}")
         return "추가 정보를 생성할 수 없습니다."
 
+def generate_review_opinion(document_id: int, extraction: DocumentExtraction, additional_info: AdditionalInfo | None, risk_analysis, db: Session) -> str:
+    """심사 의견을 LLM으로 생성합니다."""
+    try:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        context = f"""
+당신은 금융 대출 심사 전문가입니다. 다음 정보를 바탕으로 심사 의견을 작성해주세요.
+
+【기업 정보】
+- 회사명: {extraction.company_name or "N/A"}
+- 산업: {extraction.industry or "N/A"}
+- 대표자: {extraction.ceo_name or "N/A"}
+- 설립일: {extraction.establishment_date or "N/A"}
+
+【재무 정보】
+- 매출: {extraction.revenue or "N/A"}
+- 영업이익: {extraction.operating_profit or "N/A"}
+- 순이익: {extraction.net_profit or "N/A"}
+- 총자산: {extraction.total_assets or "N/A"}
+- 총부채: {extraction.total_liabilities or "N/A"}
+- 자본: {extraction.equity or "N/A"}
+
+【대출 정보】
+- 대출 목적: {extraction.loan_purpose or "N/A"}
+- 대출 금액: {extraction.loan_amount or "N/A"}
+"""
+
+        if additional_info:
+            context += f"""
+【추가 정보】
+- AI 제안 필드: {json.dumps(additional_info.field_data or {}, ensure_ascii=False)}
+- 사용자 입력: {json.dumps(additional_info.custom_fields or {}, ensure_ascii=False)}
+- 담보 정보: {json.dumps(additional_info.collateral_data or {}, ensure_ascii=False)}
+"""
+
+        if risk_analysis:
+            context += f"""
+【위험 분석】
+- 종합 등급: {risk_analysis.overall_grade}
+- 고위험 요인: {', '.join([f.title for f in risk_analysis.risk_factors if f.level == 'high']) or '없음'}
+- 개선 계획: {risk_analysis.improvement_plan}
+"""
+
+        context += """
+위 정보를 종합하여 전문적인 심사 의견을 3-5문단으로 작성해주세요.
+다음 내용을 포함해야 합니다:
+
+1. 기업의 신용도 및 재무 안정성 평가
+2. 대출 목적의 타당성 및 상환 능력 분석
+3. 주요 위험 요인 및 리스크 관리 방안
+4. 대출 승인 여부에 대한 최종 의견 (승인 추천, 조건부 승인, 거절 등)
+5. 승인 시 권장 조건 (한도, 금리, 담보 등)
+
+전문적이고 객관적인 한국어로 작성하되, 명확한 근거와 구체적인 수치를 포함해주세요.
+"""
+
+        response = model.generate_content(
+            context,
+            generation_config=genai.GenerationConfig(
+                temperature=0.3,
+            )
+        )
+
+        opinion = response.text.strip()
+
+        # DB에 저장
+        document = db.query(Document).filter(Document.id == document_id).first()
+        if document:
+            document.review_opinion = opinion
+            db.commit()
+
+        return opinion
+
+    except Exception as e:
+        print(f"[LLM] 심사 의견 생성 실패: {str(e)}")
+        return ""
+
 @router.get("/{document_id}/report", response_model=ReportResponse)
 def get_report(
     document_id: int,
     db: Session = Depends(get_db)
 ):
-    """문서의 리포트 데이터를 조회합니다. 추가 정보가 있으면 LLM으로 인사이트를 생성합니다."""
+    """문서의 리포트 데이터를 조회합니다. DB의 실제 데이터를 기반으로 LLM이 최종 리포트를 생성합니다."""
     document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
-    if not document.report_data:
-        raise HTTPException(status_code=404, detail="리포트 데이터가 없습니다.")
+    # 추출 데이터 조회
+    extraction = db.query(DocumentExtraction).filter(
+        DocumentExtraction.document_id == document_id
+    ).first()
 
-    # 추가 정보가 있는 경우 LLM으로 인사이트 생성
+    if not extraction:
+        raise HTTPException(status_code=404, detail="추출된 데이터를 찾을 수 없습니다.")
+
+    # 추가 정보 조회
     additional_info = db.query(AdditionalInfo).filter(
         AdditionalInfo.document_id == document_id
     ).first()
 
-    report_data = document.report_data.copy()
+    # 위험 분석 수행 (내부적으로 호출)
+    try:
+        risk_analysis = get_risk_analysis(document_id, db)
+    except:
+        risk_analysis = None
 
-    if additional_info and (additional_info.field_data or additional_info.custom_fields or additional_info.collateral_data):
-        # LLM으로 추가 정보 생성
-        additional_info_data = {
-            "field_data": additional_info.field_data or {},
-            "custom_fields": additional_info.custom_fields or {},
-            "collateral_data": additional_info.collateral_data or {}
-        }
-        report_data["additional_information"] = generate_additional_information(additional_info_data)
-    else:
-        report_data["additional_information"] = None
+    # 심사 의견 조회 또는 생성
+    review_opinion = document.review_opinion
+    if not review_opinion:
+        review_opinion = generate_review_opinion(document_id, extraction, additional_info, risk_analysis, db)
 
-    return ReportResponse(data=report_data)
+    # LLM을 사용하여 최종 리포트 생성
+    try:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        # 컨텍스트 구성
+        context = f"""
+당신은 금융 대출 심사 전문가입니다. 다음 정보를 바탕으로 최종 대출 심사 리포트를 작성해주세요.
+
+【추출된 기업 정보】
+- 회사명: {extraction.company_name or "N/A"}
+- 사업자번호: {extraction.business_number or "N/A"}
+- 대표자: {extraction.ceo_name or "N/A"}
+- 설립일: {extraction.establishment_date or "N/A"}
+- 산업: {extraction.industry or "N/A"}
+- 주소: {extraction.address or "N/A"}
+- 매출: {extraction.revenue or "N/A"}
+- 영업이익: {extraction.operating_profit or "N/A"}
+- 순이익: {extraction.net_profit or "N/A"}
+- 총자산: {extraction.total_assets or "N/A"}
+- 총부채: {extraction.total_liabilities or "N/A"}
+- 자본: {extraction.equity or "N/A"}
+- 직원 수: {extraction.employee_count or "N/A"}
+- 주요 제품: {extraction.main_products or "N/A"}
+- 대출 목적: {extraction.loan_purpose or "N/A"}
+- 대출 금액: {extraction.loan_amount or "N/A"}
+"""
+
+        if additional_info:
+            context += f"""
+【추가 정보】
+- AI 제안 필드: {json.dumps(additional_info.field_data or {}, ensure_ascii=False)}
+- 사용자 입력: {json.dumps(additional_info.custom_fields or {}, ensure_ascii=False)}
+- 담보 정보: {json.dumps(additional_info.collateral_data or {}, ensure_ascii=False)}
+"""
+
+        if risk_analysis:
+            context += f"""
+【위험 분석 결과】
+- 산업 분류: {risk_analysis.industry_classification.name} ({risk_analysis.industry_classification.code})
+- 종합 등급: {risk_analysis.overall_grade}
+- 고위험 요인: {', '.join([f.title for f in risk_analysis.risk_factors if f.level == 'high'])}
+- 중위험 요인: {', '.join([f.title for f in risk_analysis.risk_factors if f.level == 'medium'])}
+- 저위험 요인: {', '.join([f.title for f in risk_analysis.risk_factors if f.level == 'low'])}
+- 개선 계획: {risk_analysis.improvement_plan}
+"""
+
+        if review_opinion:
+            context += f"""
+【심사자 의견】
+{review_opinion}
+"""
+
+        context += """
+다음 형식의 JSON으로 최종 리포트를 작성해주세요:
+
+{
+  "summary": "기업의 전반적인 신용도와 대출 적격성에 대한 종합 요약 (3-5문장)",
+  "company": {
+    "name": "회사명",
+    "industry": "산업",
+    "established_year": "설립연도",
+    "main_business": "주요 사업 내용",
+    "main_clients": "주요 고객사"
+  },
+  "financial": {
+    "ratios": {
+      "debt_ratio": "부채비율 값과 평가",
+      "current_ratio": "유동비율 값과 평가",
+      "operating_margin": "영업이익률 값과 평가"
+    },
+    "revenue": {
+      "current_year": "당해년도 매출",
+      "next_year": "차년도 매출 전망",
+      "year_after_next": "차차년도 매출 전망"
+    }
+  },
+  "risk": {
+    "high": ["고위험 요인 1", "고위험 요인 2"],
+    "medium": ["중위험 요인 1", "중위험 요인 2"],
+    "positive": ["긍정 요인 1", "긍정 요인 2"]
+  },
+  "loan": {
+    "conditions": {
+      "approval_limit": "승인 한도",
+      "interest_rate": "금리",
+      "repayment_period": "상환 기간",
+      "collateral": "담보 조건"
+    },
+    "approval_requirements": ["승인 조건 1", "승인 조건 2", "승인 조건 3"]
+  }
+}
+
+중요:
+1. 실제 데이터에 기반하여 작성하되, 부족한 정보는 산업 평균이나 합리적 추정을 사용하세요.
+2. 매출 전망은 현재 매출과 산업 동향을 고려하여 작성하세요.
+3. 대출 조건은 위험 분석과 재무 상태를 종합하여 합리적으로 제안하세요.
+4. **심사자 의견이 제공된 경우, 반드시 해당 의견을 summary와 loan 섹션에 적극 반영하세요.**
+   - summary: 심사자의 핵심 판단을 포함하여 작성
+   - loan.conditions: 심사자가 제시한 조건을 우선 반영
+   - loan.approval_requirements: 심사자가 요구한 승인 조건을 포함
+5. 반드시 유효한 JSON 형식으로만 응답하세요.
+"""
+
+        response = model.generate_content(
+            context,
+            generation_config=genai.GenerationConfig(
+                temperature=0.3,
+            )
+        )
+
+        result = response.text.strip()
+
+        # JSON 코드 블록 제거
+        if result.startswith("```json"):
+            result = result[7:]
+        elif result.startswith("```"):
+            result = result[3:]
+        if result.endswith("```"):
+            result = result[:-3]
+        result = result.strip()
+
+        report_json = json.loads(result)
+        report_data = ReportData(**report_json)
+
+        return ReportResponse(data=report_data, review_opinion=review_opinion)
+
+    except Exception as e:
+        print(f"[LLM] 리포트 생성 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"리포트 생성에 실패했습니다: {str(e)}")
 
 @router.post("/{document_id}/report", response_model=ReportResponse)
 def update_report(
