@@ -44,8 +44,9 @@
 - **FastAPI**: Python 기반 웹 프레임워크
 - **SQLAlchemy**: ORM 데이터베이스 관리
 - **SQLite**: 데이터베이스
-- **Google Gemini AI**: 문서 분석 및 데이터 추출 AI 모델
-- **LlamaIndex**: 문서 처리 및 AI 워크플로우
+- **Google Gemini AI**: 구조화된 데이터 추출 및 분석
+- **Tesseract OCR**: 광학 문자 인식 (문서 텍스트 추출)
+- **OpenCV & Pillow**: 이미지 전처리 및 OCR 정확도 향상
 
 ### Frontend
 
