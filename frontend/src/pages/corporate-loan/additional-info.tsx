@@ -275,14 +275,14 @@ export default function AdditionalInfo() {
   if (isLoading) {
     return (
       <Layout
-        title="Additional Information"
-        subtitle="AI-suggested required information"
+        title="추가 정보"
+        subtitle="AI가 제안하는 필수 정보"
       >
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
           <div className="flex items-center justify-center space-x-3">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
             <span className="text-blue-800 font-medium">
-              Analyzing industry and suggesting required information...
+              산업 분석 및 필요 정보 제안 중...
             </span>
           </div>
         </div>
@@ -293,12 +293,12 @@ export default function AdditionalInfo() {
   if (!additionalInfo) {
     return (
       <Layout
-        title="Additional Information"
-        subtitle="AI-suggested required information"
+        title="추가 정보"
+        subtitle="AI가 제안하는 필수 정보"
       >
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <span className="text-red-800 font-medium">
-            Failed to load additional information suggestions.
+            추가 정보 제안을 불러오는데 실패했습니다.
           </span>
         </div>
       </Layout>
@@ -307,8 +307,8 @@ export default function AdditionalInfo() {
 
   return (
     <Layout
-      title="Additional Information"
-      subtitle="AI-suggested required information"
+      title="추가 정보"
+      subtitle="AI가 제안하는 필수 정보"
     >
       {/* 업계 동향 및 전망 */}
       {additionalInfo.industryOutlook && (
@@ -427,9 +427,9 @@ export default function AdditionalInfo() {
       {/* 추가 정보 입력 폼 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Suggested Information to Collect
+          수집 필요 정보
           <span className="text-sm font-normal text-gray-500 ml-2">
-            (* Required fields)
+            (* 필수 항목)
           </span>
         </h3>
 
@@ -489,9 +489,9 @@ export default function AdditionalInfo() {
       {/* 사용자 추가 입력 섹션 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Additional Notes for LLM Analysis
+          LLM 분석을 위한 추가 메모
           <span className="text-sm font-normal text-gray-500 ml-2">
-            (Optional - Will be used for final report generation)
+            (선택 사항 - 최종 리포트 생성에 활용됩니다)
           </span>
         </h3>
 
@@ -573,14 +573,14 @@ export default function AdditionalInfo() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back
+          이전
         </Button>
         <div className="flex space-x-3">
           <Button variant="outline" onClick={handleSkip}>
-            Skip
+            건너뛰기
           </Button>
           <Button onClick={handleSave}>
-            Save & Continue
+            저장 후 계속
             <svg
               className="w-4 h-4 ml-2"
               fill="none"

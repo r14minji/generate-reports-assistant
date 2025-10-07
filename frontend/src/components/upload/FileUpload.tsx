@@ -120,9 +120,9 @@ export default function FileUpload({ onUploadSuccess, onUploadError }: FileUploa
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Uploading...
+              업로드 중...
             </h3>
-            <p className="text-sm text-gray-600">Please wait</p>
+            <p className="text-sm text-gray-600">잠시만 기다려주세요</p>
           </>
         ) : (
           <>
@@ -137,14 +137,14 @@ export default function FileUpload({ onUploadSuccess, onUploadError }: FileUploa
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Upload Documents
+              문서 업로드
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Drag and drop your business plan or click to browse
+              사업계획서를 드래그하거나 클릭하여 업로드하세요
             </p>
             <div className="text-xs text-gray-500">
-              <p>Supported formats: PDF, DOCX, PPT, Images</p>
-              <p>Maximum file size: 50MB</p>
+              <p>지원 형식: PDF, DOCX, PPT, 이미지</p>
+              <p>최대 파일 크기: 50MB</p>
             </div>
           </>
         )}

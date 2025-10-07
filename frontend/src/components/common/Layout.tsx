@@ -49,10 +49,10 @@ export default function Layout({ children, title, subtitle }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <h1 className="text-2xl font-bold text-gray-900">
-              Corporate Loan Analysis System
+              기업 대출 분석 시스템
             </h1>
             <p className="mt-1 text-sm text-gray-600">
-              AI-powered document analysis and risk assessment platform
+              AI 기반 문서 분석 및 리스크 평가 플랫폼
             </p>
 
             {/* Breadcrumb */}

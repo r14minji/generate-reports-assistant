@@ -11,13 +11,12 @@ const Home: React.FC = () => {
       {/* Corporate Loan Analysis System */}
       <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
         <h2 className="text-xl font-semibold text-blue-900 mb-2">
-          Corporate Loan Analysis System
+          기업 대출 분석 시스템
         </h2>
         <p className="text-blue-700 mb-4">
-          Professional AI-powered loan analysis platform converted from HTML to
-          React.
+          AI 기반 전문 대출 분석 플랫폼
           <br />
-          Organized with modular page structure and enterprise-grade design.
+          모듈형 페이지 구조와 엔터프라이즈급 디자인으로 구성되어 있습니다.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -37,7 +36,7 @@ const Home: React.FC = () => {
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
               />
             </svg>
-            Launch Analysis System
+            분석 시스템 시작
           </Link>
           <Link
             to="/corporate-loan/upload"
@@ -56,7 +55,7 @@ const Home: React.FC = () => {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            Direct to Upload
+            바로 업로드하기
           </Link>
         </div>
       </div>

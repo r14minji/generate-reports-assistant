@@ -20,8 +20,8 @@ export default function Extraction() {
 
   return (
     <Layout
-      title="Data Extraction"
-      subtitle="Review and verify extracted information"
+      title="데이터 추출"
+      subtitle="추출된 정보 확인 및 검증"
     >
       <ExtractionData documentId={documentId} />
 
@@ -40,10 +40,10 @@ export default function Extraction() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back
+          이전
         </Button>
         <Button onClick={handleNext}>
-          Next Step
+          다음 단계
           <svg
             className="w-4 h-4 ml-2"
             fill="none"

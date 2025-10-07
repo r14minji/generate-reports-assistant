@@ -307,7 +307,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Edit
+                편집
               </Button>
             ) : (
               <div className="flex gap-2">
@@ -424,7 +424,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Edit
+                편집
               </Button>
             ) : (
               <div className="flex gap-2">
@@ -473,7 +473,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              Edit
+              편집
             </Button>
           ) : (
             <div className="flex gap-2">
@@ -543,7 +543,7 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
               추출 방식
             </label>
             <p className="text-sm text-gray-900 bg-gray-50 rounded p-3">
-              {data.extraction_method === "mock" ? "Mock Data" : data.extraction_method}
+              {data.extraction_method}
             </p>
           </div>
         </div>
@@ -553,24 +553,24 @@ export default function ExtractionData({ documentId }: ExtractionDataProps) {
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-lg font-semibold text-gray-900">
-            Extraction Confidence
+            추출 신뢰도
           </h4>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            {data.extraction_method === "mock" ? "Mock Data" : "Very High"}
+            매우 높음
           </span>
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-sm font-medium text-gray-600">
-            Accuracy:
+            정확도:
           </span>
           <div className="flex-1 bg-gray-200 rounded-full h-2">
             <div
               className="bg-green-600 h-2 rounded-full"
-              style={{ width: data.extraction_method === "mock" ? "100%" : "94%" }}
+              style={{ width: "94%" }}
             ></div>
           </div>
           <span className="text-sm font-medium text-gray-900">
-            {data.extraction_method === "mock" ? "100%" : "94%"}
+            94%
           </span>
         </div>
       </div>

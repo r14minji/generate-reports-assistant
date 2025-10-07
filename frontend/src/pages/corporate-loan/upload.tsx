@@ -41,8 +41,8 @@ export default function Upload() {
 
   return (
     <Layout
-      title="Document Upload"
-      subtitle="Upload business plan and supporting documents"
+      title="문서 업로드"
+      subtitle="사업계획서 및 지원 문서 업로드"
     >
       <FileUpload
         onUploadSuccess={handleUploadSuccess}
@@ -94,7 +94,7 @@ export default function Upload() {
             </div>
             <div className="ml-3">
               <div className="text-sm font-medium text-green-800">
-                File uploaded successfully
+                파일 업로드 완료
               </div>
               <div className="text-sm text-green-700">
                 {uploadedFile.filename} ({formatFileSize(uploadedFile.file_size)})
@@ -119,11 +119,11 @@ export default function Upload() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back
+          이전
         </Button>
         {uploadedFile && (
           <Button onClick={handleStartAnalysis}>
-            Start Analysis
+            분석 시작
             <svg
               className="w-4 h-4 ml-2"
               fill="none"

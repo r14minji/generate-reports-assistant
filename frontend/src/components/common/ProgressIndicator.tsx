@@ -9,12 +9,12 @@ interface ProgressIndicatorProps {
 }
 
 const steps: Step[] = [
-  { id: "dashboard", name: "Dashboard", status: "upcoming" },
-  { id: "upload", name: "Upload", status: "upcoming" },
-  { id: "extraction", name: "Data Extraction", status: "upcoming" },
-  { id: "additional-info", name: "Additional Info", status: "upcoming" },
-  { id: "analysis", name: "Risk Analysis", status: "upcoming" },
-  { id: "report", name: "Report", status: "upcoming" },
+  { id: "dashboard", name: "대시보드", status: "upcoming" },
+  { id: "upload", name: "문서 업로드", status: "upcoming" },
+  { id: "extraction", name: "데이터 추출", status: "upcoming" },
+  { id: "additional-info", name: "추가 정보", status: "upcoming" },
+  { id: "analysis", name: "위험 분석", status: "upcoming" },
+  { id: "report", name: "리포트", status: "upcoming" },
 ];
 
 export default function ProgressIndicator({
