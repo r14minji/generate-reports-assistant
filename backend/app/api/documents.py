@@ -39,10 +39,10 @@ class RiskFactor(BaseModel):
 
 class FinancialRatio(BaseModel):
     name: str
-    value: float
-    industry_average: float
+    value: float | None
+    industry_average: float | None
     status: str  # good, warning, danger
-    percentage: float
+    percentage: float | None
 
 class RiskAnalysisResponse(BaseModel):
     industry_classification: IndustryClassification
@@ -380,6 +380,8 @@ def get_risk_analysis(
       "percentage": 72.0
     }
   ],
+
+중요: 재무 정보가 없어서 계산할 수 없는 경우, value/industry_average/percentage 필드에 null을 사용하세요. 'N/A' 같은 문자열은 사용하지 마세요.
   "overall_grade": "B등급 (5등급 중 2등급)",
   "improvement_plan": "개선 계획 설명"
 }

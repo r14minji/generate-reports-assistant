@@ -77,6 +77,12 @@ def get_suggested_fields(document_id: int, db: Session = Depends(get_db)):
 
 insights는 최소 3개, 최대 5개로 제안하고, type은 positive(기회), negative(위험), neutral(참고)로 구분해주세요.
 suggested_fields는 해당 산업의 대출 심사에 실제로 필요한 정보를 제안해주세요.
+
+중요 규칙:
+- 연도별 데이터(예: 최근 3년간 연구개발 투자, 연도별 매출)는 반드시 type을 "text" 또는 "textarea"로 설정하세요. "number"를 사용하지 마세요.
+- 단일 숫자 값만 필요한 경우에만 "number" 타입을 사용하세요.
+- 여러 값이나 복잡한 정보는 "text" 또는 "textarea"를 사용하세요.
+
 반드시 유효한 JSON 형식으로만 응답하세요.
 """
 
