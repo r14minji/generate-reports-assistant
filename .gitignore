@@ -27,4 +27,7 @@ pnpm-lock.yaml
 *.sln
 *.sw?
 
+# Environment variables
 .env
+.env.*
+!.env.example
